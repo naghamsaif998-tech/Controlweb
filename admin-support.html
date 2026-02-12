@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>دعم فلامنكو | الإدارة</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
+    <style>
+        :root { --main: #d63384; --bg: #121212; --card: #1e1e1e; --success: #28a745; --danger: #dc3545; --text: #eeeeee; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; direction: rtl; }
+        .header { background: linear-gradient(135deg, var(--main), #9d174d); padding: 20px; text-align: center; border-radius: 12px; margin-bottom: 15px; }
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
+        .stat-card { background: var(--card); padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #333; }
+        .stat-number { font-size: 22px; font-weight: bold; color: var(--main); display: block; }
+        .msg-card { background: var(--card); border-radius: 12px; padding: 15px; margin-bottom: 15px; border-right: 5px solid #444; }
+        .msg-card.new { border-right-color: var(--main); }
+        .msg-card.replied { border-right-color: var(--success); }
+        .msg-body { background: #252525; padding: 12px; border-radius: 8px; margin: 10px 0; font-size: 14px; line-height: 1.6; }
+        .admin-reply { background: rgba(40, 167, 69, 0.1); padding: 10px; border-radius: 8px; border-right: 3px solid var(--success); color: #86efac; margin-top: 10px; }
+        .btn { padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .btn-reply { background: var(--success); width: 100%; margin-top: 10px; }
+        .btn-delete { background: var(--danger); width: 100%; margin-top: 5px; }
+        .reply-box { display: none; margin-top: 15px; background: #2a2a2a; padding: 10px; border-radius: 8px; }
+        textarea { width: 100%; height: 100px; background: #121212; color: white; border: 1px solid var(--main); border-radius: 5px; padding: 10px; box-sizing: border-box; resize: none; }
+        #loading { text-align: center; padding: 40px; color: var(--main); font-size: 1.2rem; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1><i class="fas fa-headset"></i> رسائل الدعم</h1>
+        <small>مراجعة استفسارات المستخدمين والرد عليها</small>
+    </div>
+
+    <div class="stats">
+        <div class="stat-card"><span id="total-count" class="stat-number">0</span><small>الكل</small></div>
+        <div class="stat-card"><span id="new-count" class="stat-number">0</span><small>جديد</small></div>
+        <div class="stat-card"><span id="replied-count" class="stat-number">0</span><small>تم الرد</small></div>
+    </div>
+
+    <div id="loading"><i class="fas fa-spinner fa-spin"></i> جاري تحميل الرسائل...</div>
+    <div id="messages-list"></div>
+
+    <script>
+        var S_URL = 'https://yboxheficowekfzjatti.supabase.co';
+        // المفتاح الجديد المحدث لحل مشكلة الصلاحيات
+        var S_KEY = 'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS';
+        var _sb;
+
+        async function init() {
+            try {
+                if (typeof window.supabase === 'undefined') {
+                    document.getElementById('loading').innerHTML = "فشل تحميل مكتبة البيانات";
+                    return;
+                }
+                _sb = window.supabase.createClient(S_URL, S_KEY);
+                loadMessages();
+            } catch (err) {
+                console.error("Init error:", err);
+            }
+        }
+
+        async function loadMessages() {
+            try {
+                // استخدام جدول support_messages المعتمد
+                const { data, error } = await _sb
+                    .from('support_messages')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                renderMessages(data || []);
+            } catch (err) {
+                document.getElementById('loading').innerText = "خطأ: " + err.message;
+            }
+        }
+
+        function renderMessages(msgs) {
+            document.getElementById('loading').style.display = 'none';
+            const list = document.getElementById('messages-list');
+            
+            if (msgs.length === 0) {
+                list.innerHTML = '<p style="text-align:center; color:#888; padding:20px;">لا توجد رسائل دعم حالياً.</p>';
+                updateStats([]);
+                return;
+            }
+
+            list.innerHTML = msgs.map(msg => {
+                const isNew = msg.status === 'new';
+                return `
+                    <div class="msg-card ${isNew ? 'new' : 'replied'}">
+                        <div style="font-size:12px; color:#aaa; margin-bottom:8px;">
+                            <i class="fas fa-clock"></i> ${new Date(msg.created_at).toLocaleDateString('ar-EG')}
+                        </div>
+                        <div style="font-weight:bold; color:var(--main); margin-bottom:5px;">الموضوع: ${msg.subject || 'بدون عنوان'}</div>
+                        <div class="msg-body">${msg.message}</div>
+                        
+                        ${msg.reply_content ? `
+                            <div class="admin-reply">
+                                <b><i class="fas fa-reply"></i> رد الإدارة:</b><br>
+                                ${msg.reply_content}
+                            </div>
+                        ` : ''}
+                        
+                        <div style="margin-top:10px; display: flex; gap: 5px;">
+                            ${isNew ? `<button class="btn btn-reply" style="flex:2" onclick="toggleReplyBox('${msg.id}')">رد الآن</button>` : ''}
+                            <button class="btn btn-delete" style="flex:1" onclick="deleteMessage('${msg.id}')"><i class="fas fa-trash"></i></button>
+                        </div>
+
+                        <div id="box-${msg.id}" class="reply-box">
+                            <textarea id="input-${msg.id}" placeholder="اكتب ردك هنا..."></textarea>
+                            <button class="btn btn-reply" onclick="submitReply('${msg.id}')">إرسال الرد</button>
+                        </div>
+                    </div>`;
+            }).join('');
+            updateStats(msgs);
+        }
+
+        window.toggleReplyBox = (id) => {
+            const el = document.getElementById('box-' + id);
+            el.style.display = (el.style.display === 'block') ? 'none' : 'block';
+        };
+
+        window.submitReply = async (id) => {
+            const text = document.getElementById('input-' + id).value;
+            if (!text) return alert("الرجاء كتابة رد أولاً");
+
+            const { error } = await _sb.from('support_messages').update({ 
+                status: 'replied', 
+                reply_content: text, 
+                replied_at: new Date() 
+            }).eq('id', id);
+
+            if (!error) {
+                alert("تم إرسال الرد بنجاح");
+                loadMessages();
+            } else {
+                alert("فشل الإرسال: " + error.message);
+            }
+        };
+
+        window.deleteMessage = async (id) => {
+            if (!confirm("هل أنت متأكد من حذف هذه الرسالة؟")) return;
+            const { error } = await _sb.from('support_messages').delete().eq('id', id);
+            if (!error) {
+                loadMessages();
+            }
+        };
+
+        function updateStats(msgs) {
+            document.getElementById('total-count').innerText = msgs.length;
+            document.getElementById('new-count').innerText = msgs.filter(m => m.status === 'new').length;
+            document.getElementById('replied-count').innerText = msgs.filter(m => m.status === 'replied').length;
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم فلامنكو الشاملة</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        :root { --main: #d63384; --secondary: #9d174d; --bg-light: #fdf2f8; --danger: #dc3545; --info: #17a2b8; }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, sans-serif; background: #f8f9fa; color: #333; overflow-x: hidden; }
+        header { background: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--main); position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .logo-container { display: flex; align-items: center; gap: 15px; }
+        .logo { width: 40px; height: 40px; background: linear-gradient(135deg, var(--main), var(--secondary)); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px; }
+        .site-title { color: var(--main); font-size: 22px; font-weight: bold; margin: 0; }
+        
+        /* القائمة الجانبية المعدلة */
+        .menu-container { position: relative; }
+        .menu-icon { font-size: 22px; color: var(--main); cursor: pointer; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px; background: white; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; }
+        .side-menu { position: fixed; top: 0; right: -300px; width: 280px; height: 100%; background: white; box-shadow: -5px 0 15px rgba(0,0,0,0.1); transition: 0.3s ease; display: flex; flex-direction: column; z-index: 9999; }
+        .side-menu.active { right: 0; }
+        .side-menu-header { padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: var(--bg-light); }
+        .side-menu a, .side-menu button { padding: 15px 20px; text-decoration: none; color: #495057; border-bottom: 1px solid #f1f3f5; text-align: right; font-size: 15px; background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: 0.3s; width: 100%; box-sizing: border-box; }
+        .side-menu a:hover { background: var(--bg-light); color: var(--main); }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; z-index: 9998; }
+        .overlay.active { display: block; }
+
+        main { padding: 20px; display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+        .card { background: #fff; padding: 25px; border-radius: 15px; border-right: 5px solid var(--main); box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e9ecef; transition: 0.3s; }
+        .count { background: var(--bg-light); color: var(--main); padding: 4px 10px; border-radius: 20px; font-size: 13px; font-weight: bold; }
+        .btn { display: block; background: linear-gradient(135deg, var(--main), var(--secondary)); color: #fff; text-align: center; padding: 10px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 15px; border: none; cursor: pointer; }
+        #loading { text-align: center; margin: 100px auto; color: var(--main); }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--main); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .quick-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin: 20px; }
+        .stat-item { background: white; padding: 15px; border-radius: 10px; display: flex; align-items: center; gap: 10px; border: 1px solid #e9ecef; }
+        .stat-value { font-size: 20px; font-weight: bold; color: var(--main); }
+        .user-info { display: flex; align-items: center; gap: 10px; }
+        .user-avatar { width: 35px; height: 35px; background: var(--main); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+
+    <header>
+        <div class="logo-container">
+            <div class="logo">ف</div>
+            <div><h1 class="site-title">فلامنكو</h1><p class="site-subtitle">نظام الإدارة</p></div>
+        </div>
+        <div class="user-info">
+            <div id="user-name" style="font-size: 14px; color: #666;">زائر</div>
+            <div class="user-avatar" id="user-avatar">?</div>
+        </div>
+        <div class="menu-container">
+            <div class="menu-icon" onclick="toggleMenu()"><i class="fas fa-bars"></i></div>
+            <nav class="side-menu" id="sideMenu">
+                <div class="side-menu-header">
+                    <strong>القائمة الرئيسية</strong>
+                    <i class="fas fa-times" onclick="toggleMenu()" style="cursor:pointer; color:var(--main)"></i>
+                </div>
+                <a href="admin-novels.html"><span><i class="fas fa-book"></i> الروايات</span> <span class="count" id="menu-stories">0</span></a>
+                <a href="admin-users.html"><span><i class="fas fa-users"></i> المستخدمين</span> <span class="count" id="menu-users">0</span></a>
+                <a href="admin-reports.html"><span><i class="fas fa-flag"></i> البلاغات</span> <span class="count" id="menu-reports">0</span></a>
+                <a href="admin-notifications.html"><span><i class="fas fa-bell"></i> الإشعارات</span></a>
+                <a href="admin-support.html"><span><i class="fas fa-headset"></i> الدعم</span> <span class="count" id="menu-support">0</span></a>
+                <a href="admin-settings.html" style="background: #fff0f6;"><span><i class="fas fa-user-shield"></i> إعدادات الفريق</span></a>
+                <button onclick="handleLogout()" style="color: var(--danger);"><i class="fas fa-sign-out-alt"></i> خروج</button>
+            </nav>
+        </div>
+    </header>
+
+    <div class="quick-stats" id="quick-stats">
+        <div class="stat-item"><div>الروايات</div><div id="stat-stories" class="stat-value">0</div></div>
+        <div class="stat-item"><div>المستخدمين</div><div id="stat-users" class="stat-value">0</div></div>
+        <div class="stat-item"><div>بلاغات</div><div id="stat-reports" class="stat-value">0</div></div>
+    </div>
+
+    <div id="loading">
+        <div class="spinner"></div>
+        <p>جاري تحديث البيانات...</p>
+    </div>
+
+    <main id="content" style="display:none;">
+        <div class="card">
+            <h3>الروايات <span id="c_stories" class="count">0</span></h3>
+            <p>مراجعة وحذف وإدارة محتوى الروايات.</p>
+            <a href="admin-novels.html" class="btn">إدارة</a>
+        </div>
+        <div class="card">
+            <h3>المستخدمين <span id="c_users" class="count">0</span></h3>
+            <p>التحكم في العضويات والحظر.</p>
+            <a href="admin-users.html" class="btn">إدارة</a>
+        </div>
+        <div class="card">
+            <h3>البلاغات <span id="c_reports" class="count">0</span></h3>
+            <p>مراجعة شكاوى المستخدمين.</p>
+            <a href="admin-reports.html" class="btn">إدارة</a>
+        </div>
+        <div class="card">
+            <h3>نظام الإشعارات</h3>
+            <p>إرسال تنبيهات عامة أو خاصة للأعضاء.</p>
+            <a href="admin-notifications.html" class="btn" style="background: var(--info);">إرسال</a>
+        </div>
+        <div class="card">
+            <h3>الدعم الفني <span id="c_support" class="count">0</span></h3>
+            <p>الرد على الرسائل المباشرة.</p>
+            <a href="admin-support.html" class="btn">إدارة</a>
+        </div>
+        <div class="card" style="border-right-color: #495057;">
+            <h3>إعدادات الفريق</h3>
+            <p>إدارة المشرفين وتحديد صلاحيات الوصول.</p>
+            <a href="admin-settings.html" class="btn" style="background: #495057;">إدارة الفريق</a>
+        </div>
+    </main>
+
+    <script>
+        const S_URL = 'https://yboxheficowekfzjatti.supabase.co';
+        // تم تحديث المفتاح هنا
+        const S_KEY = 'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS';
+        
+        const flamencoClient = window.supabase.createClient(S_URL, S_KEY);
+
+        function toggleMenu() {
+            document.getElementById('sideMenu').classList.toggle('active');
+            document.getElementById('overlay').classList.toggle('active');
+        }
+
+        async function init() {
+            try {
+                const { data: { user } } = await flamencoClient.auth.getUser();
+                if (user) {
+                    document.getElementById('user-name').textContent = user.email.split('@')[0];
+                    document.getElementById('user-avatar').textContent = user.email[0].toUpperCase();
+                }
+
+                await fetchStats();
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'grid';
+            } catch (err) {
+                console.log("Init error:", err);
+                document.getElementById('loading').innerHTML = "حدث خطأ أثناء المزامنة";
+            }
+        }
+
+        async function fetchStats() {
+            const tables = {
+                stories: ['c_stories', 'stat-stories', 'menu-stories'],
+                profiles: ['c_users', 'stat-users', 'menu-users'],
+                reports: ['c_reports', 'stat-reports', 'menu-reports'],
+                support_messages: ['c_support', 'menu-support']
+            };
+
+            for (const [table, ids] of Object.entries(tables)) {
+                try {
+                    const { count } = await flamencoClient.from(table).select('*', { count: 'exact', head: true });
+                    ids.forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) el.innerText = count || 0;
+                    });
+                } catch (e) { console.error(table + " error"); }
+            }
+        }
+
+        async function handleLogout() {
+            if (confirm("هل تريد الخروج؟")) {
+                await flamencoClient.auth.signOut();
+                location.reload();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

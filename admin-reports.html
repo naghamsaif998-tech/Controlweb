@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة البلاغات | فلامنكو</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
+    <style>
+        :root { --main: #d63384; --bg: #f5f5f5; --danger: #dc3545; --success: #28a745; --warning: #ffc107; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; padding: 20px; direction: rtl; }
+        .header { background: linear-gradient(135deg, var(--main), #9d174d); color: white; padding: 20px; text-align: center; border-radius: 12px; margin-bottom: 25px; }
+        .alert { padding: 15px; border-radius: 8px; margin-bottom: 15px; display: none; font-weight: bold; position: fixed; top: 20px; left: 20px; z-index: 10001; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .alert-success { background: #d1fae5; color: #065f46; }
+        .alert-error { background: #fee2e2; color: #991b1b; }
+        .filter-bar { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; }
+        .filter-btn { padding: 10px 20px; border: 2px solid #ddd; border-radius: 25px; background: white; cursor: pointer; transition: 0.3s; white-space: nowrap; }
+        .filter-btn.active { background: var(--main); color: white; border-color: var(--main); }
+        .report-card { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; border-right: 5px solid #ccc; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .report-card.pending { border-right-color: var(--warning); }
+        .report-card.resolved { border-right-color: var(--success); opacity: 0.8; }
+        .actions { display: flex; gap: 8px; margin-top: 15px; flex-wrap: wrap; }
+        .btn { padding: 10px 12px; border: none; border-radius: 6px; cursor: pointer; color: white; flex: 1; text-align: center; font-size: 13px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .btn-ignore { background: #6c757d; }
+        .btn-warn { background: var(--warning); color: #333; }
+        .btn-delete { background: var(--danger); }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 25px; border-radius: 15px; max-width: 450px; width: 90%; }
+        textarea { width: 100%; height: 100px; padding: 10px; margin: 15px 0; border: 1px solid #ddd; border-radius: 8px; resize: none; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+
+    <div id="alert-box" class="alert"></div>
+
+    <div class="header">
+        <h1 style="margin:0;"><i class="fas fa-flag"></i> إدارة البلاغات</h1>
+        <p>مراجعة المخالفات واتخاذ الإجراءات الإدارية</p>
+    </div>
+
+    <div id="loading" style="text-align: center; padding: 40px; color: var(--main);">
+        <i class="fas fa-spinner fa-spin fa-2x"></i><br><p>جاري جلب البلاغات...</p>
+    </div>
+
+    <div id="main-content" style="display: none;">
+        <div class="filter-bar">
+            <button class="filter-btn active" onclick="filterReports('all', this)">الكل</button>
+            <button class="filter-btn" onclick="filterReports('pending', this)">قيد المراجعة</button>
+            <button class="filter-btn" onclick="filterReports('resolved', this)">تم الحل</button>
+        </div>
+        <div id="reports-list"></div>
+    </div>
+
+    <div id="warn-modal" class="modal">
+        <div class="modal-content">
+            <h3>إرسال تحذير للمستخدم</h3>
+            <textarea id="warn-message" placeholder="اكتب نص التحذير هنا..."></textarea>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-warn" onclick="sendWarning()">إرسال</button>
+                <button class="btn btn-ignore" onclick="closeModal('warn-modal')">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var APP_CONFIG = {
+            URL: 'https://yboxheficowekfzjatti.supabase.co',
+            // تحديث المفتاح الجديد لحل مشكلة الـ 401
+            KEY: 'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS'
+        };
+
+        var _sb;
+        var _reports = [];
+        var _targetUser = null;
+
+        function showAlert(type, msg) {
+            const box = document.getElementById('alert-box');
+            box.className = `alert alert-${type === 'error' ? 'error' : 'success'}`;
+            box.innerHTML = msg;
+            box.style.display = 'block';
+            setTimeout(() => box.style.display = 'none', 3000);
+        }
+
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        async function init() {
+            try {
+                if (!window.supabase) return;
+                _sb = window.supabase.createClient(APP_CONFIG.URL, APP_CONFIG.KEY);
+                fetchReports();
+            } catch (err) { 
+                showAlert('error', 'خطأ في تهيئة النظام'); 
+            }
+        }
+
+        async function fetchReports() {
+            try {
+                // استخدام جدول reports كما يظهر في الـ Table Editor
+                const { data, error } = await _sb.from('reports').select('*').order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                
+                _reports = data || [];
+                renderReports(_reports);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('main-content').style.display = 'block';
+            } catch (err) {
+                showAlert('error', 'فشل جلب البيانات: ' + err.message);
+            }
+        }
+
+        function renderReports(reports) {
+            const list = document.getElementById('reports-list');
+            if (!reports.length) { list.innerHTML = '<p style="text-align:center; padding:20px;">لا توجد بلاغات حالياً.</p>'; return; }
+            
+            list.innerHTML = reports.map(r => `
+                <div class="report-card ${r.status || 'pending'}">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                        <strong style="color:var(--main)">بلاغ رقم #${r.id ? r.id.slice(0,5) : '---'}</strong>
+                        <span style="font-size:12px;">${r.status === 'resolved' ? '✅ تم الحل' : '⏳ قيد المراجعة'}</span>
+                    </div>
+                    <p><b>سبب البلاغ:</b> ${r.reason}</p>
+                    <div class="actions">
+                        <button class="btn btn-ignore" onclick="updateStatus('${r.id}', 'resolved')">تجاهل/حل</button>
+                        <button class="btn btn-warn" onclick="openWarn('${r.reporter_id}')">تحذير المبلغ عنه</button>
+                        <button class="btn btn-delete" onclick="deleteContent('${r.story_id}', '${r.id}')">حذف المحتوى</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.filterReports = (type, btn) => {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const filtered = type === 'all' ? _reports : _reports.filter(r => (r.status || 'pending') === type);
+            renderReports(filtered);
+        };
+
+        window.openWarn = (userId) => { 
+            _targetUser = userId; 
+            document.getElementById('warn-modal').style.display = 'flex'; 
+        };
+
+        window.updateStatus = async (id, status) => {
+            const { error } = await _sb.from('reports').update({ status }).eq('id', id);
+            if (!error) {
+                showAlert('success', 'تم تحديث حالة البلاغ');
+                fetchReports();
+            }
+        };
+
+        window.deleteContent = async (sId, rId) => {
+            if (!confirm("هل أنت متأكد من حذف هذا المحتوى نهائياً؟")) return;
+            // استخدام جدول stories للحذف
+            const { error: err1 } = await _sb.from('stories').delete().eq('id', sId);
+            const { error: err2 } = await _sb.from('reports').update({ status: 'resolved' }).eq('id', rId);
+            
+            if (!err1) {
+                showAlert('success', 'تم حذف المحتوى وإغلاق البلاغ');
+                fetchReports();
+            } else {
+                showAlert('error', 'فشل الحذف: ' + err1.message);
+            }
+        };
+
+        window.sendWarning = async () => {
+            const msg = document.getElementById('warn-message').value;
+            if(!msg) return alert("اكتب رسالة التحذير");
+            
+            // استخدام جدول notifications لإرسال التحذير
+            const { error } = await _sb.from('notifications').insert({ 
+                recipient_id: _targetUser, 
+                title: "تحذير إداري", 
+                message: msg, 
+                type: 'warning' 
+            });
+            
+            if (!error) {
+                showAlert('success', 'تم إرسال التحذير للمستخدم');
+                closeModal('warn-modal');
+            }
+        };
+
+        window.onload = init;
+    </script>
+</body>
+</html>

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة فريق العمل | فلامنكو</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
+    <style>
+        :root { --main: #d63384; --bg: #f8f9fa; --danger: #dc3545; --success: #28a745; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; padding: 20px; direction: rtl; max-width: 1200px; margin: 0 auto; }
+        .header { background: linear-gradient(135deg, var(--main), #9d174d); color: white; padding: 25px; border-radius: 15px; text-align: center; margin-bottom: 25px; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 25px; }
+        .card-title { color: var(--main); font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px; font-size: 1.2rem; }
+        .search-box { position: relative; margin-bottom: 15px; }
+        .search-box input { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+        #user-suggestions { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 100; display: none; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .suggestion-item { padding: 10px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f1f1f1; }
+        .permissions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 15px 0; background: #fff5f8; padding: 15px; border-radius: 8px; }
+        .perm-item { display: flex; align-items: center; gap: 8px; font-size: 14px; background: white; padding: 8px; border-radius: 5px; border: 1px solid #eee; }
+        .admins-table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
+        .admins-table th { background: #f8f9fa; padding: 12px; text-align: right; border-bottom: 2px solid #ddd; }
+        .admins-table td { padding: 12px; border-bottom: 1px solid #eee; }
+        .role-badge { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; background: #e3f2fd; color: #0d47a1; }
+        .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; display: inline-flex; align-items: center; gap: 5px; }
+        .btn-primary { background: var(--main); color: white; width: 100%; justify-content: center; }
+        .btn-delete { background: #fee2e2; color: #c62828; padding: 6px 10px; }
+        #loading { text-align: center; margin: 40px; color: var(--main); }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1><i class="fas fa-user-shield"></i> إدارة فريق العمل</h1>
+        <p>تعيين المسؤولين وتحديد الصلاحيات</p>
+    </div>
+
+    <div id="loading"><i class="fas fa-spinner fa-spin fa-2x"></i><br>جاري تحميل البيانات...</div>
+
+    <div id="main-content" style="display: none;">
+        <div class="card">
+            <div class="card-title"><i class="fas fa-user-plus"></i> إضافة مسؤول جديد</div>
+            <div class="search-box">
+                <input type="text" id="user-search" placeholder="ابحث باسم المستخدم أو الإيميل..." oninput="searchUsers(this.value)">
+                <div id="user-suggestions"></div>
+            </div>
+            <div id="selected-user" style="display:none; padding:10px; background:#f0f9ff; border:1px solid #b3e5fc; border-radius:6px; margin-bottom:15px;">
+                <strong>المستخدم المحدد:</strong> <span id="sel-username"></span>
+                <input type="hidden" id="sel-uid">
+            </div>
+            <select id="role-select" style="width:100%; padding:10px; border-radius:6px; border:1px solid #ddd;">
+                <option value="moderator">مشرف</option>
+                <option value="admin">مسؤول</option>
+                <option value="super_admin">مدير عام</option>
+            </select>
+            <div class="permissions-grid">
+                <div class="perm-item"><input type="checkbox" class="perm-check" value="novels"> إدارة الروايات</div>
+                <div class="perm-item"><input type="checkbox" class="perm-check" value="users"> إدارة المستخدمين</div>
+                <div class="perm-item"><input type="checkbox" class="perm-check" value="reports"> إدارة البلاغات</div>
+                <div class="perm-item"><input type="checkbox" class="perm-check" value="admins"> إدارة المسؤولين</div>
+            </div>
+            <button class="btn btn-primary" onclick="addAdmin()">حفظ الصلاحيات</button>
+        </div>
+
+        <div class="card">
+            <div class="card-title">المسؤولون الحاليون</div>
+            <table class="admins-table">
+                <thead><tr><th>المستخدم</th><th>الدور</th><th>الصلاحيات</th><th>إجراء</th></tr></thead>
+                <tbody id="admins-list"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        var S_URL = 'https://yboxheficowekfzjatti.supabase.co';
+        // تم استبدال المفتاح القديم بالمفتاح الجديد القابل للنشر
+        var S_KEY = 'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS'; 
+        var _sb;
+
+        async function init() {
+            try {
+                if (typeof window.supabase === 'undefined') {
+                    document.getElementById('loading').innerHTML = "فشل تحميل مكتبة قاعدة البيانات";
+                    return;
+                }
+
+                _sb = window.supabase.createClient(S_URL, S_KEY);
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('main-content').style.display = 'block';
+                
+                fetchAdmins();
+            } catch (err) {
+                console.error("Error during init:", err);
+            }
+        }
+
+        async function fetchAdmins() {
+            try {
+                // جلب قائمة المسؤولين مع تجنب خطأ الربط المعقد
+                // سنقوم بجلب بيانات admin_permissions أولاً ثم profiles بشكل منفصل لضمان الاستقرار
+                const { data: adminData, error: adminError } = await _sb.from('admin_permissions').select('*');
+                if (adminError) throw adminError;
+
+                const tbody = document.getElementById('admins-list');
+                if (!adminData || adminData.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center">لا يوجد مسؤولون حالياً</td></tr>';
+                    return;
+                }
+
+                // جلب أسماء المستخدمين لجميع المسؤولين دفعة واحدة
+                const userIds = adminData.map(a => a.user_id);
+                const { data: userData } = await _sb.from('profiles').select('id, username').in('id', userIds);
+                
+                // دمج البيانات
+                const adminsWithProfile = adminData.map(adm => {
+                    const profile = (userData || []).find(u => u.id === adm.user_id);
+                    return { ...adm, username: profile ? profile.username : 'مستخدم غير معروف' };
+                });
+
+                tbody.innerHTML = adminsWithProfile.map(adm => `
+                    <tr>
+                        <td><strong>${adm.username}</strong></td>
+                        <td><span class="role-badge">${adm.role}</span></td>
+                        <td>${(adm.permissions || []).join(', ')}</td>
+                        <td><button class="btn btn-delete" onclick="removeAdmin('${adm.user_id}')">حذف</button></td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                console.log("Fetch error:", e.message);
+            }
+        }
+
+        window.searchUsers = function(query) {
+            if (!query || query.length < 2) {
+                document.getElementById('user-suggestions').style.display = 'none';
+                return;
+            }
+            
+            setTimeout(async () => {
+                // البحث في جدول profiles
+                const { data } = await _sb.from('profiles').select('id, username').ilike('username', `%${query}%`).limit(5);
+                const list = document.getElementById('user-suggestions');
+                if (data && data.length > 0) {
+                    list.style.display = 'block';
+                    list.innerHTML = data.map(u => `<div class="suggestion-item" onclick="selectUser('${u.id}', '${u.username}')">${u.username}</div>`).join('');
+                } else {
+                    list.style.display = 'none';
+                }
+            }, 300);
+        };
+
+        window.selectUser = function(id, name) {
+            document.getElementById('sel-uid').value = id;
+            document.getElementById('sel-username').innerText = name;
+            document.getElementById('selected-user').style.display = 'block';
+            document.getElementById('user-suggestions').style.display = 'none';
+            document.getElementById('user-search').value = name;
+        };
+
+        window.addAdmin = async function() {
+            const uid = document.getElementById('sel-uid').value;
+            if (!uid) return alert("اختر مستخدماً أولاً");
+            
+            const role = document.getElementById('role-select').value;
+            const perms = Array.from(document.querySelectorAll('.perm-check:checked')).map(c => c.value);
+            
+            // استخدام جدول admin_permissions كما يظهر في الـ Table Editor
+            const { error } = await _sb.from('admin_permissions').upsert({ user_id: uid, role: role, permissions: perms });
+            if (error) alert("خطأ: " + error.message);
+            else {
+                alert("تم تحديث الصلاحيات بنجاح");
+                fetchAdmins();
+            }
+        };
+
+        window.removeAdmin = async function(uid) {
+            if (!confirm("هل أنت متأكد من حذف هذا المسؤول؟")) return;
+            const { error } = await _sb.from('admin_permissions').delete().eq('user_id', uid);
+            if (!error) {
+                alert("تم الحذف بنجاح");
+                fetchAdmins();
+            } else {
+                alert("خطأ في الحذف: " + error.message);
+            }
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
