@@ -8,56 +8,65 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
         :root { --main: #d63384; --secondary: #9d174d; --bg: #f8f9fa; }
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); direction: rtl; margin: 0; padding: 20px; }
-        .header { background: linear-gradient(135deg, var(--main), var(--secondary)); color: white; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 20px; }
-        .container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        h2 { color: var(--main); border-bottom: 2px solid #eee; padding-bottom: 10px; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input, select, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        .btn { background: var(--main); color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 16px; }
-        .btn:hover { background: var(--secondary); }
+        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); direction: rtl; margin: 0; padding: 15px; }
+        
+        .header { background: linear-gradient(135deg, var(--main), var(--secondary)); color: white; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(214, 51, 132, 0.2); }
+        .container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; position: relative; }
+        
+        h2 { color: var(--main); border-bottom: 2px solid #eee; padding-bottom: 10px; font-size: 1.1rem; margin-top: 0; }
+        .form-group { margin-bottom: 15px; position: relative; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; font-size: 14px; }
+        
+        input, select, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 16px; outline: none; transition: 0.3s; background: #fff; }
+        input:focus { border-color: var(--main); }
+        
+        .btn { background: var(--main); color: white; border: none; padding: 14px; border-radius: 10px; cursor: pointer; width: 100%; font-weight: bold; font-size: 16px; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .btn:active { transform: scale(0.98); opacity: 0.9; }
+        
         .notif-card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-right: 5px solid var(--main); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .notif-header { display: flex; justify-content: space-between; font-weight: bold; color: var(--main); }
-        #loading { text-align: center; padding: 50px; }
-        .user-suggestion { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; }
-        .user-suggestion:hover { background: #f0f0f0; }
-        #suggestions { border: 1px solid #ddd; display: none; max-height: 150px; overflow-y: auto; background: white; position: absolute; width: 90%; z-index: 10; }
-        .back-btn { display: inline-block; margin-bottom: 15px; color: var(--main); text-decoration: none; font-weight: bold; }
-        .relative { position: relative; }
+        .notif-header { display: flex; justify-content: space-between; font-weight: bold; color: var(--main); margin-bottom: 5px; font-size: 14px; }
+        
+        #suggestions { border: 1px solid #ddd; display: none; max-height: 200px; overflow-y: auto; background: white; position: absolute; width: 100%; z-index: 100; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); top: 70px; }
+        .user-suggestion { padding: 12px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 14px; color: #333; }
+        .user-suggestion:hover { background: #fdf2f8; }
+        
+        .back-btn { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 15px; color: var(--main); text-decoration: none; font-weight: bold; font-size: 14px; }
+        #loading { text-align: center; padding: 30px; color: #999; }
     </style>
 </head>
 <body>
 
-    <a href="admin-dashboard.html" class="back-btn"><i class="fas fa-arrow-right"></i> عودة للوحة التحكم</a>
+    <a href="admin-index.html" class="back-btn"><i class="fas fa-arrow-right"></i> العودة للرئيسية</a>
 
     <div class="header">
         <h1><i class="fas fa-bell"></i> نظام الإشعارات</h1>
-        <p>إرسال تنبيهات عامة أو خاصة للمستخدمين</p>
+        <p style="margin:5px 0 0;">إرسال تنبيهات مباشرة للقراء</p>
     </div>
 
     <div class="container">
         <h2><i class="fas fa-paper-plane"></i> إرسال إشعار جديد</h2>
+        
         <div class="form-group">
             <label>نوع الإشعار</label>
-            <select id="type" onchange="document.getElementById('user-sec').style.display = this.value === 'general' ? 'none' : 'block'">
+            <select id="type" onchange="toggleUserSection(this.value)">
                 <option value="general">إشعار عام (للجميع)</option>
                 <option value="private">إشعار خاص (لمستخدم محدد)</option>
                 <option value="warning">تحذير (لمستخدم محدد)</option>
             </select>
         </div>
 
-        <div class="form-group relative" id="user-sec" style="display:none;">
-            <label>ابحث عن المستخدم (بالاسم أو الإيميل)</label>
-            <input type="text" id="user-search" oninput="searchUsers(this.value)" placeholder="اكتب للبحث..." autocomplete="off">
+        <div class="form-group" id="user-sec" style="display:none;">
+            <label>ابحث عن المستخدم</label>
+            <input type="text" id="user-search" oninput="searchUsers(this.value)" placeholder="اكتب اسم المستخدم أو الإيميل..." autocomplete="off">
             <div id="suggestions"></div>
             <input type="hidden" id="target-id">
-            <div id="selected-name" style="margin-top:5px; color: green; font-weight: bold;"></div>
+            <div id="selected-name" style="margin-top:8px; color: #16a34a; font-size: 13px; font-weight: bold;"></div>
         </div>
 
         <div class="form-group">
             <label>العنوان</label>
-            <input type="text" id="title" placeholder="عنوان الرسالة">
+            <input type="text" id="title" placeholder="عنوان الرسالة (مثلاً: تحديث جديد)">
         </div>
 
         <div class="form-group">
@@ -65,44 +74,36 @@
             <textarea id="message" rows="3" placeholder="اكتب نص الإشعار هنا..."></textarea>
         </div>
 
-        <button class="btn" onclick="sendNotif()"><i class="fas fa-share"></i> إرسال الآن</button>
+        <button class="btn" id="sendBtn" onclick="sendNotif()">
+            <i class="fas fa-paper-plane"></i> إرسال الإشعار
+        </button>
     </div>
 
     <div class="container">
-        <h2><i class="fas fa-history"></i> الإشعارات المرسلة مؤخراً</h2>
-        <div id="loading"><i class="fas fa-spinner fa-spin"></i> جاري تحميل البيانات...</div>
+        <h2><i class="fas fa-history"></i> سجل الإشعارات</h2>
+        <div id="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>
         <div id="notif-list"></div>
     </div>
 
     <script>
-        // تحديث الرابط والمفتاح الجديد
-        var S_URL = 'https://yboxheficowekfzjatti.supabase.co';
-        var S_KEY = 'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS'; 
-        var _sb; 
-        var allUsers = [];
+        const S_URL = 'https://yboxheficowekfzjatti.supabase.co';
+        const S_KEY = 'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS'; 
+        const _sb = window.supabase.createClient(S_URL, S_KEY);
+        let allUsers = [];
 
         async function initPage() {
             try {
-                if (typeof window.supabase === 'undefined') {
-                    document.getElementById('loading').innerHTML = "فشل تحميل المكتبة، تأكد من الإنترنت.";
-                    return;
-                }
-
-                if (!_sb) {
-                    _sb = window.supabase.createClient(S_URL, S_KEY);
-                }
-
-                const { data: authData } = await _sb.auth.getUser();
-                
-                // جلب بيانات المستخدمين من جدول profiles
+                // جلب بيانات المستخدمين للبحث
                 const { data: usersData } = await _sb.from('profiles').select('id, username, email').limit(1000);
                 allUsers = usersData || [];
-
                 loadNotifications();
             } catch (err) {
-                console.error("Error:", err);
-                document.getElementById('loading').innerHTML = "حدث خطأ: " + err.message;
+                document.getElementById('loading').innerHTML = "خطأ في الاتصال بالسيرفر";
             }
+        }
+
+        function toggleUserSection(val) {
+            document.getElementById('user-sec').style.display = (val === 'general') ? 'none' : 'block';
         }
 
         function searchUsers(query) {
@@ -116,7 +117,8 @@
 
             sugBox.innerHTML = filtered.map(u => `
                 <div class="user-suggestion" onclick="selectUser('${u.id}', '${u.username || u.email}')">
-                    ${u.username || 'بدون اسم'} (${u.email})
+                    <i class="fas fa-user"></i> ${u.username || 'مستخدم'} <br>
+                    <small style="color:#999">${u.email}</small>
                 </div>
             `).join('');
             sugBox.style.display = filtered.length ? 'block' : 'none';
@@ -124,21 +126,24 @@
 
         function selectUser(id, name) {
             document.getElementById('target-id').value = id;
-            document.getElementById('selected-name').innerText = "تم اختيار: " + name;
+            document.getElementById('selected-name').innerText = "✅ تم الاختيار: " + name;
             document.getElementById('suggestions').style.display = 'none';
             document.getElementById('user-search').value = name;
         }
 
         async function sendNotif() {
-            const title = document.getElementById('title').value;
-            const message = document.getElementById('message').value;
+            const title = document.getElementById('title').value.trim();
+            const message = document.getElementById('message').value.trim();
             const type = document.getElementById('type').value;
             const targetId = document.getElementById('target-id').value;
+            const btn = document.getElementById('sendBtn');
 
-            if (!title || !message) return alert("يرجى ملء البيانات");
-            if (type !== 'general' && !targetId) return alert("يرجى اختيار مستخدم");
+            if (!title || !message) return alert("⚠️ يرجى كتابة العنوان والمحتوى");
+            if (type !== 'general' && !targetId) return alert("⚠️ يرجى اختيار مستخدم من القائمة");
 
-            // تم التأكد من استخدام جدول notifications
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
+
             const { error } = await _sb.from('notifications').insert([{
                 title: title,
                 message: message,
@@ -147,9 +152,11 @@
             }]);
 
             if (error) {
-                alert("خطأ في الإرسال: " + error.message);
+                alert("❌ فشل الإرسال: " + error.message);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-paper-plane"></i> إرسال الإشعار';
             } else {
-                alert("تم الإرسال بنجاح!");
+                alert("🚀 تم إرسال الإشعار بنجاح!");
                 location.reload();
             }
         }
@@ -158,7 +165,7 @@
             try {
                 const { data, error } = await _sb.from('notifications')
                     .select('*, recipient:profiles(username)')
-                    .order('created_at', { ascending: false }).limit(20);
+                    .order('created_at', { ascending: false }).limit(10);
 
                 document.getElementById('loading').style.display = 'none';
                 const list = document.getElementById('notif-list');
@@ -168,14 +175,17 @@
                         <div class="notif-card">
                             <div class="notif-header">
                                 <span>${n.title}</span>
-                                <small>${n.type === 'general' ? 'عام' : 'خاص لـ ' + (n.recipient?.username || 'مستخدم')}</small>
+                                <span class="count" style="font-size:10px">${n.type === 'general' ? 'عام' : 'خاص'}</span>
                             </div>
-                            <p>${n.message}</p>
-                            <small style="color:#999">${new Date(n.created_at).toLocaleString('ar-EG')}</small>
+                            <p style="margin:5px 0; font-size:14px; color:#444;">${n.message}</p>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                                <small style="color:#aaa">${new Date(n.created_at).toLocaleDateString('ar-EG')}</small>
+                                ${n.recipient?.username ? `<small style="color:var(--main)">لـ: ${n.recipient.username}</small>` : ''}
+                            </div>
                         </div>
                     `).join('');
                 } else {
-                    list.innerHTML = "<p style='text-align:center;'>لا توجد إشعارات حالياً.</p>";
+                    list.innerHTML = "<p style='text-align:center; color:#999;'>لا يوجد سجل إشعارات.</p>";
                 }
             } catch (e) {
                 console.error(e);
