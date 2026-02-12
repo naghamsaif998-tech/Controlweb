@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>دعم فلامنكو | الإدارة</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
+    <style>
+        :root { --main: #d63384; --bg: #121212; --card: #1e1e1e; --success: #28a745; --danger: #dc3545; --text: #eeeeee; }
+        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; direction: rtl; }
+        
+        .back-btn { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 15px; color: var(--main); text-decoration: none; font-weight: bold; font-size: 14px; }
+        
+        .header { background: linear-gradient(135deg, var(--main), #9d174d); padding: 20px; text-align: center; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(214, 51, 132, 0.3); }
+        .header h1 { margin: 0; font-size: 1.4rem; }
+        
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+        .stat-card { background: var(--card); padding: 12px; border-radius: 12px; text-align: center; border: 1px solid #333; }
+        .stat-number { font-size: 20px; font-weight: bold; color: var(--main); display: block; }
+        .stat-card small { font-size: 11px; color: #888; }
+
+        .msg-card { background: var(--card); border-radius: 15px; padding: 15px; margin-bottom: 15px; border-right: 5px solid #444; transition: 0.3s; }
+        .msg-card.new { border-right-color: var(--main); }
+        .msg-card.replied { border-right-color: var(--success); opacity: 0.9; }
+        
+        .msg-body { background: #252525; padding: 12px; border-radius: 10px; margin: 10px 0; font-size: 14px; line-height: 1.6; color: #ddd; }
+        
+        .admin-reply { background: rgba(40, 167, 69, 0.1); padding: 12px; border-radius: 10px; border-right: 3px solid var(--success); color: #86efac; margin-top: 10px; font-size: 13px; }
+        
+        .btn { padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn:active { transform: scale(0.96); }
+        .btn-reply { background: var(--success); }
+        .btn-delete { background: var(--danger); }
+        
+        .reply-box { display: none; margin-top: 15px; background: #2a2a2a; padding: 15px; border-radius: 12px; border: 1px solid var(--main); }
+        textarea { width: 100%; height: 100px; background: #121212; color: white; border: 1px solid #444; border-radius: 8px; padding: 10px; box-sizing: border-box; resize: none; outline: none; margin-bottom: 10px; }
+        
+        #loading { text-align: center; padding: 40px; color: var(--main); }
+    </style>
+</head>
+<body>
+
+    <a href="index.html" class="back-btn"><i class="fas fa-arrow-right"></i> العودة للرئيسية</a>
+
+    <div class="header">
+        <h1><i class="fas fa-headset"></i> رسائل الدعم</h1>
+        <p style="margin:5px 0 0; font-size: 12px; opacity: 0.9;">مراجعة استفسارات المستخدمين والرد عليها</p>
+    </div>
+
+    <div class="stats">
+        <div class="stat-card"><span id="total-count" class="stat-number">0</span><small>الكل</small></div>
+        <div class="stat-card"><span id="new-count" class="stat-number">0</span><small>جديد</small></div>
+        <div class="stat-card"><span id="replied-count" class="stat-number">0</span><small>تم الرد</small></div>
+    </div>
+
+    <div id="loading"><i class="fas fa-spinner fa-spin fa-2x"></i><br><p>جاري التحميل...</p></div>
+    <div id="messages-list"></div>
+
+    <script>
+        const S_URL = 'https://yboxheficowekfzjatti.supabase.co';
+        const S_KEY = 'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS';
+        const _sb = window.supabase.createClient(S_URL, S_KEY);
+
+        async function init() {
+            loadMessages();
+        }
+
+        async function loadMessages() {
+            try {
+                const { data, error } = await _sb.from('support_messages').select('*').order('created_at', { ascending: false });
+                if (error) throw error;
+                renderMessages(data || []);
+            } catch (err) {
+                document.getElementById('loading').innerHTML = "خطأ في تحميل البيانات";
+            }
+        }
+
+        function renderMessages(msgs) {
+            document.getElementById('loading').style.display = 'none';
+            const list = document.getElementById('messages-list');
+            
+            if (msgs.length === 0) {
+                list.innerHTML = '<div style="text-align:center; color:#666; padding:40px;">لا توجد رسائل دعم.</div>';
+                updateStats([]);
+                return;
+            }
+
+            list.innerHTML = msgs.map(msg => {
+                const isNew = msg.status === 'new';
+                return `
+                    <div class="msg-card ${isNew ? 'new' : 'replied'}">
+                        <div style="font-size:11px; color:#888; margin-bottom:8px; display:flex; justify-content:space-between;">
+                            <span><i class="fas fa-clock"></i> ${new Date(msg.created_at).toLocaleDateString('ar-EG')}</span>
+                            <span>#${msg.id.slice(0,5)}</span>
+                        </div>
+                        <div style="font-weight:bold; color:var(--main); margin-bottom:5px;">${msg.subject || 'بدون عنوان'}</div>
+                        <div class="msg-body">${msg.message}</div>
+                        
+                        ${msg.reply_content ? `
+                            <div class="admin-reply">
+                                <b><i class="fas fa-reply-all"></i> رد الإدارة:</b><br>
+                                ${msg.reply_content}
+                            </div>
+                        ` : ''}
+                        
+                        <div style="margin-top:15px; display: flex; gap: 10px;">
+                            ${isNew ? `<button class="btn btn-reply" style="flex:2" onclick="toggleReplyBox('${msg.id}')"><i class="fas fa-comment-dots"></i> رد الآن</button>` : ''}
+                            <button class="btn btn-delete" style="flex:1" onclick="deleteMessage('${msg.id}')"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+
+                        <div id="box-${msg.id}" class="reply-box">
+                            <textarea id="input-${msg.id}" placeholder="اكتب ردك الرسمي هنا..."></textarea>
+                            <button class="btn btn-reply" style="width:100%" onclick="submitReply('${msg.id}')">إرسال الرد</button>
+                        </div>
+                    </div>`;
+            }).join('');
+            updateStats(msgs);
+        }
+
+        window.toggleReplyBox = (id) => {
+            const el = document.getElementById('box-' + id);
+            el.style.display = (el.style.display === 'block') ? 'none' : 'block';
+        };
+
+        window.submitReply = async (id) => {
+            const text = document.getElementById('input-' + id).value.trim();
+            if (!text) return alert("يرجى كتابة نص الرد");
+
+            const { error } = await _sb.from('support_messages').update({ 
+                status: 'replied', 
+                reply_content: text, 
+                replied_at: new Date() 
+            }).eq('id', id);
+
+            if (!error) {
+                alert("🚀 تم إرسال الرد وتحديث الحالة");
+                loadMessages();
+            } else { alert("خطأ: " + error.message); }
+        };
+
+        window.deleteMessage = async (id) => {
+            if (!confirm("هل تريد حذف هذه الرسالة نهائياً؟")) return;
+            const { error } = await _sb.from('support_messages').delete().eq('id', id);
+            if (!error) loadMessages();
+        };
+
+        function updateStats(msgs) {
+            document.getElementById('total-count').innerText = msgs.length;
+            document.getElementById('new-count').innerText = msgs.filter(m => m.status === 'new').length;
+            document.getElementById('replied-count').innerText = msgs.filter(m => m.status === 'replied').length;
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

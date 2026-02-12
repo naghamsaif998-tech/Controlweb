@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة الروايات | فلامنكو</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        :root { --main: #d63384; --danger: #dc3545; --bg: #f8f9fa; --text: #333; }
+        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; padding: 15px; direction: rtl; }
+        
+        .back-btn { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 15px; color: var(--main); text-decoration: none; font-weight: bold; font-size: 14px; }
+        
+        .header { background: linear-gradient(135deg, var(--main), #9d174d); color: white; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(214, 51, 132, 0.2); }
+        .header h1 { margin: 0; font-size: 1.5rem; }
+        
+        .search-container { position: relative; margin-bottom: 20px; }
+        .search-input { width: 100%; padding: 15px; border-radius: 12px; border: 2px solid #ddd; font-size: 16px; outline: none; transition: 0.3s; }
+        .search-input:focus { border-color: var(--main); }
+        
+        .novel-card { background: white; padding: 20px; border-radius: 15px; margin-bottom: 15px; border-right: 5px solid var(--main); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .novel-title { font-size: 1.2rem; color: var(--text); margin: 0 0 10px 0; }
+        
+        .stats { display: flex; gap: 15px; margin-bottom: 15px; font-size: 0.85rem; color: #777; }
+        .actions { display: flex; gap: 10px; border-top: 1px solid #eee; padding-top: 15px; }
+        
+        .btn { flex: 1; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; color: white; text-align: center; text-decoration: none; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .btn-view { background: #17a2b8; }
+        .btn-delete { background: var(--danger); }
+        .btn:active { transform: scale(0.98); }
+
+        #loading { text-align: center; margin-top: 50px; color: var(--main); }
+        #no-data { text-align: center; padding: 40px; color: #999; display: none; }
+    </style>
+</head>
+<body>
+
+    <a href="index.html" class="back-btn"><i class="fas fa-arrow-right"></i> العودة للرئيسية</a>
+
+    <div class="header">
+        <h1><i class="fas fa-book-open"></i> إدارة الروايات</h1>
+        <p style="margin:5px 0 0; font-size: 13px; opacity: 0.9;">مراجعة وحذف المحتوى لتوفير المساحة</p>
+    </div>
+
+    <div id="app-content">
+        <div class="search-container">
+            <input type="text" class="search-input" id="search-box" placeholder="ابحث بعنوان الرواية..." oninput="filterNovels(this.value)">
+        </div>
+        
+        <div id="loading"><i class="fas fa-spinner fa-spin"></i> جاري جلب البيانات...</div>
+        <div id="no-data">لا توجد روايات بهذا العنوان.</div>
+        <div id="novels-list"></div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            URL: 'https://yboxheficowekfzjatti.supabase.co',
+            KEY: 'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS'
+        };
+        let _sb;
+        let _items = [];
+
+        async function init() {
+            try {
+                _sb = window.supabase.createClient(CONFIG.URL, CONFIG.KEY);
+                
+                // جلب البيانات من جدول stories
+                const { data, error } = await _sb.from('stories').select('*').order('created_at', { ascending: false });
+                
+                if (error) throw error;
+
+                document.getElementById('loading').style.display = 'none';
+                _items = data || [];
+                render(_items);
+            } catch (e) {
+                document.getElementById('loading').innerHTML = `<span style="color:red">خطأ: تأكد من الاتصال بالإنترنت</span>`;
+            }
+        }
+
+        function render(data) {
+            const list = document.getElementById('novels-list');
+            if (data.length === 0) {
+                document.getElementById('no-data').style.display = 'block';
+                list.innerHTML = '';
+                return;
+            }
+            document.getElementById('no-data').style.display = 'none';
+            list.innerHTML = data.map(item => `
+                <div class="novel-card" id="card-${item.id}">
+                    <h2 class="novel-title">${item.title}</h2>
+                    <div class="stats">
+                        <span><i class="fas fa-eye"></i> ${item.views_count || 0}</span>
+                        <span><i class="fas fa-calendar-alt"></i> ${new Date(item.created_at).toLocaleDateString('ar-EG')}</span>
+                    </div>
+                    <div class="actions">
+                        <button class="btn btn-delete" onclick="handleDelete('${item.id}', '${item.title}', '${item.cover_url}')">
+                            <i class="fas fa-trash-alt"></i> حذف نهائي
+                        </button>
+                    </div>
+                </div>`).join('');
+        }
+
+        function filterNovels(q) {
+            const filtered = _items.filter(i => i.title.toLowerCase().includes(q.toLowerCase()));
+            render(filtered);
+        }
+
+        async function handleDelete(id, name, coverUrl) {
+            if (!confirm(`⚠️ تحذير نهائي:\nهل أنت متأكد من حذف "${name}"؟\nلا يمكن التراجع عن هذه العملية.`)) return;
+            
+            try {
+                // 1. حذف الصورة من Storage أولاً
+                if (coverUrl && coverUrl.includes('story_covers')) {
+                    const filePath = coverUrl.split('/story_covers/')[1];
+                    if (filePath) {
+                        await _sb.storage.from('story_covers').remove([filePath]);
+                    }
+                }
+
+                // 2. حذف السجل من قاعدة البيانات
+                const { error } = await _sb.from('stories').delete().eq('id', id);
+                if (error) throw error;
+
+                // 3. إرسال إشعار للنظام
+                const { data: { user } } = await _sb.auth.getUser();
+                if (user) {
+                    await _sb.from('notifications').insert({
+                        recipient_id: user.id,
+                        title: "تم الحذف",
+                        message: `تم حذف الرواية "${name}" بنجاح.`,
+                        type: "system"
+                    });
+                }
+
+                alert("تم الحذف بنجاح.");
+                _items = _items.filter(i => i.id != id);
+                render(_items);
+
+            } catch (e) {
+                alert("فشل الحذف: " + e.message);
+            }
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
