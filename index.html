@@ -3,168 +3,186 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة تحكم فلامنكو الشاملة</title>
+    <title>إدارة فريق العمل | فلامنكو</title>
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
     <style>
-        :root { --main: #d63384; --secondary: #9d174d; --bg-light: #fdf2f8; --danger: #dc3545; --info: #17a2b8; }
-        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-        body { margin: 0; font-family: 'Segoe UI', Tahoma, sans-serif; background: #f8f9fa; color: #333; overflow-x: hidden; }
-        
-        /* شاشة الدخول */
-        #loginSection { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; position: relative; z-index: 100; }
-        .login-box { background: white; padding: 35px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 360px; text-align: center; border: 1px solid #eee; }
-        .login-box input { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 12px; text-align: right; outline: none; }
-        .login-box button { width: 100%; padding: 15px; background: var(--main); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; }
-
-        header { background: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--main); position: sticky; top: 0; z-index: 500; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        .logo-container { display: flex; align-items: center; gap: 15px; }
-        .logo { width: 40px; height: 40px; background: linear-gradient(135deg, var(--main), var(--secondary)); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px; }
-        
-        /* إصلاح القائمة الجانبية والطبقة المظلمة */
-        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; z-index: 1000; transition: 0.3s; }
-        .overlay.active { display: block; }
-
-        .side-menu { position: fixed; top: 0; right: -300px; width: 280px; height: 100%; background: white; box-shadow: -5px 0 15px rgba(0,0,0,0.2); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; z-index: 2000; }
-        .side-menu.active { right: 0; }
-        
-        .side-menu-header { padding: 25px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: #fff; }
-        .side-menu a, .side-menu button { padding: 18px 20px; text-decoration: none; color: #444; border-bottom: 1px solid #f8f8f8; text-align: right; font-size: 16px; background: none; border: none; cursor: pointer; display: flex; align-items: center; gap: 12px; width: 100%; }
-        .side-menu a i { color: var(--main); width: 20px; }
-        
-        main { padding: 20px; display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
-        .card { background: #fff; padding: 25px; border-radius: 15px; border-right: 5px solid var(--main); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .count { background: var(--bg-light); color: var(--main); padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-right: auto; }
-        .btn { display: block; background: linear-gradient(135deg, var(--main), var(--secondary)); color: #fff; text-align: center; padding: 12px; border-radius: 10px; text-decoration: none; font-weight: bold; margin-top: 15px; }
-        
-        .hidden { display: none !important; }
-        .stat-value { font-size: 22px; font-weight: bold; color: var(--main); }
-        .user-avatar { width: 35px; height: 35px; background: var(--main); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; }
+        :root { --main: #d63384; --bg: #f8f9fa; --danger: #dc3545; --success: #28a745; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; padding: 20px; direction: rtl; max-width: 1200px; margin: 0 auto; }
+        .header { background: linear-gradient(135deg, var(--main), #9d174d); color: white; padding: 25px; border-radius: 15px; text-align: center; margin-bottom: 25px; position: relative; }
+        .back-btn { position: absolute; right: 20px; top: 25px; color: white; text-decoration: none; font-size: 1.2rem; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 25px; }
+        .card-title { color: var(--main); font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px; font-size: 1.2rem; }
+        .search-box { position: relative; margin-bottom: 15px; }
+        .search-box input { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+        #user-suggestions { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 100; display: none; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .suggestion-item { padding: 10px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f1f1f1; }
+        .permissions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 15px 0; background: #fff5f8; padding: 15px; border-radius: 8px; }
+        .perm-item { display: flex; align-items: center; gap: 8px; font-size: 14px; background: white; padding: 8px; border-radius: 5px; border: 1px solid #eee; }
+        .admins-table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
+        .admins-table th { background: #f8f9fa; padding: 12px; text-align: right; border-bottom: 2px solid #ddd; }
+        .admins-table td { padding: 12px; border-bottom: 1px solid #eee; }
+        .role-badge { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; background: #e3f2fd; color: #0d47a1; }
+        .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; display: inline-flex; align-items: center; gap: 5px; }
+        .btn-primary { background: var(--main); color: white; width: 100%; justify-content: center; }
+        .btn-delete { background: #fee2e2; color: #c62828; padding: 6px 10px; }
+        #loading { text-align: center; margin: 40px; color: var(--main); }
     </style>
 </head>
 <body>
 
-    <div id="loginSection">
-        <div class="login-box">
-            <div class="logo" style="margin: 0 auto 15px;">ف</div>
-            <h2>دخول الإدارة</h2>
-            <input type="email" id="adminEmail" placeholder="البريد الإلكتروني">
-            <input type="password" id="adminPass" placeholder="كلمة المرور">
-            <button onclick="handleLogin()" id="loginBtn">دخول لوحة التحكم</button>
-            <p id="loginStatus" style="font-size: 13px; margin-top: 10px; color: red;"></p>
+    <div class="header">
+        <a href="index.html" class="back-btn"><i class="fas fa-arrow-right"></i></a>
+        <h1><i class="fas fa-user-shield"></i> إدارة فريق العمل</h1>
+        <p>تعيين المسؤولين وتحديد الصلاحيات</p>
+    </div>
+
+    <div id="loading"><i class="fas fa-spinner fa-spin fa-2x"></i><br>جاري تحميل البيانات...</div>
+
+    <div id="main-content" style="display: none;">
+        <div class="card">
+            <div class="card-title"><i class="fas fa-user-plus"></i> إضافة مسؤول جديد</div>
+            <div class="search-box">
+                <input type="text" id="user-search" placeholder="ابحث باسم المستخدم أو الإيميل..." oninput="searchUsers(this.value)">
+                <div id="user-suggestions"></div>
+            </div>
+            <div id="selected-user" style="display:none; padding:10px; background:#f0f9ff; border:1px solid #b3e5fc; border-radius:6px; margin-bottom:15px;">
+                <strong>المستخدم المحدد:</strong> <span id="sel-username"></span>
+                <input type="hidden" id="sel-uid">
+            </div>
+            <select id="role-select" style="width:100%; padding:10px; border-radius:6px; border:1px solid #ddd;">
+                <option value="moderator">مشرف</option>
+                <option value="admin">مسؤول</option>
+                <option value="super_admin">مدير عام</option>
+            </select>
+            <div class="permissions-grid">
+                <div class="perm-item"><input type="checkbox" class="perm-check" value="novels"> إدارة الروايات</div>
+                <div class="perm-item"><input type="checkbox" class="perm-check" value="users"> إدارة المستخدمين</div>
+                <div class="perm-item"><input type="checkbox" class="perm-check" value="reports"> إدارة البلاغات</div>
+                <div class="perm-item"><input type="checkbox" class="perm-check" value="admins"> إدارة المسؤولين</div>
+            </div>
+            <button class="btn btn-primary" onclick="addAdmin()">حفظ الصلاحيات</button>
+        </div>
+
+        <div class="card">
+            <div class="card-title">المسؤولون الحاليون</div>
+            <table class="admins-table">
+                <thead><tr><th>المستخدم</th><th>الدور</th><th>الصلاحيات</th><th>إجراء</th></tr></thead>
+                <tbody id="admins-list"></tbody>
+            </table>
         </div>
     </div>
 
-    <div id="dashboardWrapper" class="hidden">
-        <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
-        
-        <header>
-            <div class="logo-container">
-                <div class="logo">ف</div>
-                <div><h1 style="color: var(--main); font-size: 20px; margin:0;">فلامنكو</h1></div>
-            </div>
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <div class="user-avatar" id="user-avatar" onclick="toggleMenu()">?</div>
-                <div onclick="toggleMenu()" style="cursor:pointer; font-size: 24px; color: var(--main);"><i class="fas fa-bars"></i></div>
-            </div>
-
-            <nav class="side-menu" id="sideMenu">
-                <div class="side-menu-header">
-                    <strong style="color:var(--main)">القائمة الرئيسية</strong>
-                    <i class="fas fa-times" onclick="toggleMenu()" style="cursor:pointer; font-size: 20px;"></i>
-                </div>
-                <a href="admin-novels.html"><i class="fas fa-book"></i> الروايات <span class="count" id="menu-stories">0</span></a>
-                <a href="admin-users.html"><i class="fas fa-users"></i> المستخدمين <span class="count" id="menu-users">0</span></a>
-                <a href="admin-reports.html"><i class="fas fa-flag"></i> البلاغات <span class="count" id="menu-reports">0</span></a>
-                <a href="admin-notifications.html"><i class="fas fa-bell"></i> الإشعارات</a>
-                <a href="admin-support.html"><i class="fas fa-headset"></i> الدعم الفني</a>
-                <a href="admin-settings.html"><i class="fas fa-cog"></i> الإعدادات</a>
-                <button onclick="handleLogout()" style="color: var(--danger); margin-top: auto; border-top: 1px solid #eee;">
-                    <i class="fas fa-sign-out-alt"></i> تسجيل الخروج
-                </button>
-            </nav>
-        </header>
-
-        <main>
-            <div class="card">
-                <h3><i class="fas fa-book"></i> الروايات <span id="c_stories" class="count">0</span></h3>
-                <a href="admin-novels.html" class="btn">إدارة المحتوى</a>
-            </div>
-            <div class="card">
-                <h3><i class="fas fa-users"></i> المستخدمين <span id="c_users" class="count">0</span></h3>
-                <a href="admin-users.html" class="btn">إدارة الحسابات</a>
-            </div>
-            <div class="card">
-                <h3><i class="fas fa-bell"></i> نظام الإشعارات</h3>
-                <p style="font-size: 13px; color: #666;">إرسال تنبيهات لجميع المستخدمين.</p>
-                <a href="admin-notifications.html" class="btn" style="background: var(--info);">إرسال الآن</a>
-            </div>
-            <div class="card">
-                <h3><i class="fas fa-flag"></i> البلاغات <span id="c_reports" class="count">0</span></h3>
-                <a href="admin-reports.html" class="btn" style="background: var(--danger);">مراجعة الشكاوى</a>
-            </div>
-        </main>
-    </div>
-
     <script>
-        const S_URL = 'https://yboxheficowekfzjatti.supabase.co';
-        const S_KEY = 'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS';
-        const flamencoClient = window.supabase.createClient(S_URL, S_KEY);
+        var S_URL = 'https://yboxheficowekfzjatti.supabase.co';
+        var S_KEY = 'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS'; 
+        var _sb;
 
-        function toggleMenu() {
-            const menu = document.getElementById('sideMenu');
-            const overlay = document.getElementById('overlay');
-            menu.classList.toggle('active');
-            overlay.classList.toggle('active');
+        async function init() {
+            try {
+                if (typeof window.supabase === 'undefined') {
+                    document.getElementById('loading').innerHTML = "فشل تحميل مكتبة قاعدة البيانات";
+                    return;
+                }
+
+                _sb = window.supabase.createClient(S_URL, S_KEY);
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('main-content').style.display = 'block';
+                
+                fetchAdmins();
+            } catch (err) {
+                console.error("Error during init:", err);
+            }
         }
 
-        window.onload = async () => {
-            const { data: { session } } = await flamencoClient.auth.getSession();
-            if (session) { verifyAdmin(session.user); }
+        async function fetchAdmins() {
+            try {
+                const { data: adminData, error: adminError } = await _sb.from('admin_permissions').select('*');
+                if (adminError) throw adminError;
+
+                const tbody = document.getElementById('admins-list');
+                if (!adminData || adminData.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center">لا يوجد مسؤولون حالياً</td></tr>';
+                    return;
+                }
+
+                const userIds = adminData.map(a => a.user_id);
+                const { data: userData } = await _sb.from('profiles').select('id, username').in('id', userIds);
+                
+                const adminsWithProfile = adminData.map(adm => {
+                    const profile = (userData || []).find(u => u.id === adm.user_id);
+                    return { ...adm, username: profile ? profile.username : 'مستخدم غير معروف' };
+                });
+
+                tbody.innerHTML = adminsWithProfile.map(adm => `
+                    <tr>
+                        <td><strong>${adm.username}</strong></td>
+                        <td><span class="role-badge">${adm.role}</span></td>
+                        <td>${(adm.permissions || []).join(', ')}</td>
+                        <td><button class="btn btn-delete" onclick="removeAdmin('${adm.user_id}')">حذف</button></td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                console.log("Fetch error:", e.message);
+            }
+        }
+
+        window.searchUsers = function(query) {
+            if (!query || query.length < 2) {
+                document.getElementById('user-suggestions').style.display = 'none';
+                return;
+            }
+            
+            setTimeout(async () => {
+                const { data } = await _sb.from('profiles').select('id, username').ilike('username', `%${query}%`).limit(5);
+                const list = document.getElementById('user-suggestions');
+                if (data && data.length > 0) {
+                    list.style.display = 'block';
+                    list.innerHTML = data.map(u => `<div class="suggestion-item" onclick="selectUser('${u.id}', '${u.username}')">${u.username}</div>`).join('');
+                } else {
+                    list.style.display = 'none';
+                }
+            }, 300);
         };
 
-        async function handleLogin() {
-            const email = document.getElementById('adminEmail').value;
-            const pass = document.getElementById('adminPass').value;
-            document.getElementById('loginBtn').disabled = true;
+        window.selectUser = function(id, name) {
+            document.getElementById('sel-uid').value = id;
+            document.getElementById('sel-username').innerText = name;
+            document.getElementById('selected-user').style.display = 'block';
+            document.getElementById('user-suggestions').style.display = 'none';
+            document.getElementById('user-search').value = name;
+        };
 
-            const { data, error } = await flamencoClient.auth.signInWithPassword({ email, password: pass });
-            if (error) {
-                document.getElementById('loginStatus').innerText = "خطأ في الدخول";
-                document.getElementById('loginBtn').disabled = false;
-            } else { verifyAdmin(data.user); }
-        }
+        window.addAdmin = async function() {
+            const uid = document.getElementById('sel-uid').value;
+            if (!uid) return alert("اختر مستخدماً أولاً");
+            
+            const role = document.getElementById('role-select').value;
+            const perms = Array.from(document.querySelectorAll('.perm-check:checked')).map(c => c.value);
+            
+            const { error } = await _sb.from('admin_permissions').upsert({ user_id: uid, role: role, permissions: perms });
+            if (error) alert("خطأ: " + error.message);
+            else {
+                alert("تم تحديث الصلاحيات بنجاح");
+                fetchAdmins();
+            }
+        };
 
-        async function verifyAdmin(user) {
-            const { data } = await flamencoClient.from('admin_permissions').select('role').eq('user_id', user.id).single();
-            if (data?.role) {
-                document.getElementById('loginSection').classList.add('hidden');
-                document.getElementById('dashboardWrapper').classList.remove('hidden');
-                document.getElementById('user-avatar').textContent = user.email[0].toUpperCase();
-                fetchStats();
+        window.removeAdmin = async function(uid) {
+            if (!confirm("هل أنت متأكد من حذف هذا المسؤول؟")) return;
+            const { error } = await _sb.from('admin_permissions').delete().eq('user_id', uid);
+            if (!error) {
+                alert("تم الحذف بنجاح");
+                fetchAdmins();
             } else {
-                alert("لا تملك صلاحيات");
-                await flamencoClient.auth.signOut();
-                location.reload();
+                alert("خطأ في الحذف: " + error.message);
             }
         }
 
-        async function fetchStats() {
-            const tables = { stories: ['c_stories', 'menu-stories'], profiles: ['c_users', 'menu-users'], reports: ['c_reports', 'menu-reports'] };
-            for (const [table, ids] of Object.entries(tables)) {
-                try {
-                    const { count } = await flamencoClient.from(table).select('*', { count: 'exact', head: true });
-                    ids.forEach(id => { if(document.getElementById(id)) document.getElementById(id).innerText = count || 0; });
-                } catch(e) {}
-            }
-        }
-
-        async function handleLogout() {
-            if(confirm("هل تريد تسجيل الخروج؟")) {
-                await flamencoClient.auth.signOut();
-                location.reload();
-            }
-        }
+        window.onload = init;
     </script>
 </body>
 </html>
