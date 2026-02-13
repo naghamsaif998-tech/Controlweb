@@ -12,39 +12,34 @@
         body { margin: 0; font-family: 'Segoe UI', Tahoma, sans-serif; background: #f8f9fa; color: #333; overflow-x: hidden; }
         
         /* شاشة الدخول */
-        #loginSection { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        #loginSection { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; position: relative; z-index: 100; }
         .login-box { background: white; padding: 35px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 360px; text-align: center; border: 1px solid #eee; }
         .login-box input { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 12px; text-align: right; outline: none; }
         .login-box button { width: 100%; padding: 15px; background: var(--main); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; }
 
-        /* الهيدر */
-        header { background: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--main); position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        header { background: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--main); position: sticky; top: 0; z-index: 500; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         .logo-container { display: flex; align-items: center; gap: 15px; }
         .logo { width: 40px; height: 40px; background: linear-gradient(135deg, var(--main), var(--secondary)); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px; }
-        .site-title { color: var(--main); font-size: 22px; font-weight: bold; margin: 0; }
         
-        /* القائمة الجانبية المصححة */
-        .side-menu { position: fixed; top: 0; right: -300px; width: 280px; height: 100%; background: white; box-shadow: -5px 0 15px rgba(0,0,0,0.1); transition: 0.3s ease; display: flex; flex-direction: column; z-index: 9999; }
-        .side-menu.active { right: 0; }
-        .side-menu-header { padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: var(--bg-light); }
-        .side-menu a, .side-menu button { padding: 15px 20px; text-decoration: none; color: #495057; border-bottom: 1px solid #f1f3f5; text-align: right; font-size: 15px; background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; width: 100%; }
-        
-        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; z-index: 9998; }
+        /* إصلاح القائمة الجانبية والطبقة المظلمة */
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; z-index: 1000; transition: 0.3s; }
         .overlay.active { display: block; }
 
+        .side-menu { position: fixed; top: 0; right: -300px; width: 280px; height: 100%; background: white; box-shadow: -5px 0 15px rgba(0,0,0,0.2); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; z-index: 2000; }
+        .side-menu.active { right: 0; }
+        
+        .side-menu-header { padding: 25px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: #fff; }
+        .side-menu a, .side-menu button { padding: 18px 20px; text-decoration: none; color: #444; border-bottom: 1px solid #f8f8f8; text-align: right; font-size: 16px; background: none; border: none; cursor: pointer; display: flex; align-items: center; gap: 12px; width: 100%; }
+        .side-menu a i { color: var(--main); width: 20px; }
+        
         main { padding: 20px; display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
-        .card { background: #fff; padding: 25px; border-radius: 15px; border-right: 5px solid var(--main); box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e9ecef; }
-        .count { background: var(--bg-light); color: var(--main); padding: 4px 10px; border-radius: 20px; font-size: 13px; font-weight: bold; }
-        .btn { display: block; background: linear-gradient(135deg, var(--main), var(--secondary)); color: #fff; text-align: center; padding: 10px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 15px; border: none; }
+        .card { background: #fff; padding: 25px; border-radius: 15px; border-right: 5px solid var(--main); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .count { background: var(--bg-light); color: var(--main); padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-right: auto; }
+        .btn { display: block; background: linear-gradient(135deg, var(--main), var(--secondary)); color: #fff; text-align: center; padding: 12px; border-radius: 10px; text-decoration: none; font-weight: bold; margin-top: 15px; }
         
         .hidden { display: none !important; }
-        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--main); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        .quick-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin: 20px; }
-        .stat-item { background: white; padding: 15px; border-radius: 10px; display: flex; align-items: center; gap: 10px; border: 1px solid #e9ecef; }
-        .stat-value { font-size: 20px; font-weight: bold; color: var(--main); }
-        .user-avatar { width: 35px; height: 35px; background: var(--main); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .stat-value { font-size: 22px; font-weight: bold; color: var(--main); }
+        .user-avatar { width: 35px; height: 35px; background: var(--main); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -62,58 +57,51 @@
 
     <div id="dashboardWrapper" class="hidden">
         <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+        
         <header>
             <div class="logo-container">
                 <div class="logo">ف</div>
-                <div><h1 class="site-title">فلامنكو</h1><p style="margin:0; font-size:12px; color:#666;">نظام الإدارة</p></div>
+                <div><h1 style="color: var(--main); font-size: 20px; margin:0;">فلامنكو</h1></div>
             </div>
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <div class="user-avatar" id="user-avatar">?</div>
-                <div class="menu-icon" onclick="toggleMenu()" style="cursor:pointer; font-size: 22px; color: var(--main);"><i class="fas fa-bars"></i></div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div class="user-avatar" id="user-avatar" onclick="toggleMenu()">?</div>
+                <div onclick="toggleMenu()" style="cursor:pointer; font-size: 24px; color: var(--main);"><i class="fas fa-bars"></i></div>
             </div>
-            
+
             <nav class="side-menu" id="sideMenu">
-                <div class="side-menu-header"><strong>القائمة الرئيسية</strong><i class="fas fa-times" onclick="toggleMenu()" style="cursor:pointer; color:var(--main)"></i></div>
-                <a href="admin-novels.html"><span><i class="fas fa-book"></i> الروايات</span> <span class="count" id="menu-stories">0</span></a>
-                <a href="admin-users.html"><span><i class="fas fa-users"></i> المستخدمين</span> <span class="count" id="menu-users">0</span></a>
-                <a href="admin-reports.html"><span><i class="fas fa-flag"></i> البلاغات</span> <span class="count" id="menu-reports">0</span></a>
-                <a href="admin-notifications.html"><span><i class="fas fa-bell"></i> الإشعارات</span></a>
-                <a href="admin-support.html"><span><i class="fas fa-headset"></i> الدعم الفني</span></a>
-                <a href="admin-settings.html"><span><i class="fas fa-cog"></i> الإعدادات</span></a>
-                <button onclick="handleLogout()" style="color: var(--danger);"><i class="fas fa-sign-out-alt"></i> خروج آمن</button>
+                <div class="side-menu-header">
+                    <strong style="color:var(--main)">القائمة الرئيسية</strong>
+                    <i class="fas fa-times" onclick="toggleMenu()" style="cursor:pointer; font-size: 20px;"></i>
+                </div>
+                <a href="admin-novels.html"><i class="fas fa-book"></i> الروايات <span class="count" id="menu-stories">0</span></a>
+                <a href="admin-users.html"><i class="fas fa-users"></i> المستخدمين <span class="count" id="menu-users">0</span></a>
+                <a href="admin-reports.html"><i class="fas fa-flag"></i> البلاغات <span class="count" id="menu-reports">0</span></a>
+                <a href="admin-notifications.html"><i class="fas fa-bell"></i> الإشعارات</a>
+                <a href="admin-support.html"><i class="fas fa-headset"></i> الدعم الفني</a>
+                <a href="admin-settings.html"><i class="fas fa-cog"></i> الإعدادات</a>
+                <button onclick="handleLogout()" style="color: var(--danger); margin-top: auto; border-top: 1px solid #eee;">
+                    <i class="fas fa-sign-out-alt"></i> تسجيل الخروج
+                </button>
             </nav>
         </header>
 
-        <div class="quick-stats">
-            <div class="stat-item"><div>الروايات</div><div id="stat-stories" class="stat-value">0</div></div>
-            <div class="stat-item"><div>المستخدمين</div><div id="stat-users" class="stat-value">0</div></div>
-        </div>
-
-        <main id="content">
+        <main>
             <div class="card">
-                <h3>إدارة الروايات <span id="c_stories" class="count">0</span></h3>
-                <p>إدارة الفصول والمحتوى.</p>
-                <a href="admin-novels.html" class="btn">إدارة</a>
+                <h3><i class="fas fa-book"></i> الروايات <span id="c_stories" class="count">0</span></h3>
+                <a href="admin-novels.html" class="btn">إدارة المحتوى</a>
             </div>
             <div class="card">
-                <h3>إدارة المستخدمين <span id="c_users" class="count">0</span></h3>
-                <p>تعديل الجواهر والحظر.</p>
-                <a href="admin-users.html" class="btn">إدارة</a>
+                <h3><i class="fas fa-users"></i> المستخدمين <span id="c_users" class="count">0</span></h3>
+                <a href="admin-users.html" class="btn">إدارة الحسابات</a>
             </div>
             <div class="card">
-                <h3>نظام الإشعارات</h3>
-                <p>إرسال تنبيهات عامة للمستخدمين.</p>
-                <a href="admin-notifications.html" class="btn" style="background: var(--info);">إرسال إشعار</a>
+                <h3><i class="fas fa-bell"></i> نظام الإشعارات</h3>
+                <p style="font-size: 13px; color: #666;">إرسال تنبيهات لجميع المستخدمين.</p>
+                <a href="admin-notifications.html" class="btn" style="background: var(--info);">إرسال الآن</a>
             </div>
             <div class="card">
-                <h3>البلاغات <span id="c_reports" class="count">0</span></h3>
-                <p>مراجعة الشكاوى وبلاغات المحتوى.</p>
-                <a href="admin-reports.html" class="btn" style="background: var(--danger);">مراجعة</a>
-            </div>
-            <div class="card">
-                <h3>الدعم الفني</h3>
-                <p>الرد على استفسارات القراء.</p>
-                <a href="admin-support.html" class="btn">فتح البريد</a>
+                <h3><i class="fas fa-flag"></i> البلاغات <span id="c_reports" class="count">0</span></h3>
+                <a href="admin-reports.html" class="btn" style="background: var(--danger);">مراجعة الشكاوى</a>
             </div>
         </main>
     </div>
@@ -124,8 +112,10 @@
         const flamencoClient = window.supabase.createClient(S_URL, S_KEY);
 
         function toggleMenu() {
-            document.getElementById('sideMenu').classList.toggle('active');
-            document.getElementById('overlay').classList.toggle('active');
+            const menu = document.getElementById('sideMenu');
+            const overlay = document.getElementById('overlay');
+            menu.classList.toggle('active');
+            overlay.classList.toggle('active');
         }
 
         window.onload = async () => {
@@ -136,13 +126,12 @@
         async function handleLogin() {
             const email = document.getElementById('adminEmail').value;
             const pass = document.getElementById('adminPass').value;
-            const btn = document.getElementById('loginBtn');
-            btn.disabled = true;
+            document.getElementById('loginBtn').disabled = true;
 
             const { data, error } = await flamencoClient.auth.signInWithPassword({ email, password: pass });
             if (error) {
-                document.getElementById('loginStatus').innerText = "خطأ: " + error.message;
-                btn.disabled = false;
+                document.getElementById('loginStatus').innerText = "خطأ في الدخول";
+                document.getElementById('loginBtn').disabled = false;
             } else { verifyAdmin(data.user); }
         }
 
@@ -154,18 +143,14 @@
                 document.getElementById('user-avatar').textContent = user.email[0].toUpperCase();
                 fetchStats();
             } else {
-                alert("⛔ صلاحيات غير كافية");
+                alert("لا تملك صلاحيات");
                 await flamencoClient.auth.signOut();
                 location.reload();
             }
         }
 
         async function fetchStats() {
-            const tables = {
-                stories: ['c_stories', 'stat-stories', 'menu-stories'],
-                profiles: ['c_users', 'stat-users', 'menu-users'],
-                reports: ['c_reports', 'menu-reports']
-            };
+            const tables = { stories: ['c_stories', 'menu-stories'], profiles: ['c_users', 'menu-users'], reports: ['c_reports', 'menu-reports'] };
             for (const [table, ids] of Object.entries(tables)) {
                 try {
                     const { count } = await flamencoClient.from(table).select('*', { count: 'exact', head: true });
@@ -175,8 +160,10 @@
         }
 
         async function handleLogout() {
-            await flamencoClient.auth.signOut();
-            location.reload();
+            if(confirm("هل تريد تسجيل الخروج؟")) {
+                await flamencoClient.auth.signOut();
+                location.reload();
+            }
         }
     </script>
 </body>
