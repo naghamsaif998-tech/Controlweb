@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة تحكم فلامنكو الشاملة</title>
+    <title>index</title> <!-- تم تغيير العنوان إلى index -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
+        /* الأنماط كما هي دون تغيير */
         :root { --main: #d63384; --secondary: #9d174d; --bg-light: #fdf2f8; --danger: #dc3545; --info: #17a2b8; }
         body { margin: 0; font-family: 'Segoe UI', Tahoma, sans-serif; background: #f8f9fa; color: #333; overflow-x: hidden; }
         header { background: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--main); position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
@@ -78,7 +79,7 @@
 
     <div id="loading">
         <div class="spinner"></div>
-        <p id="loading-text">جاري مزامنة البيانات والتحقق من الصلاحيات...</p>
+        <p>جاري تحديث البيانات...</p>
     </div>
 
     <main id="content" style="display:none;">
@@ -117,6 +118,7 @@
     <script>
         const S_URL = 'https://yboxheficowekfzjatti.supabase.co';
         const S_KEY = 'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS';
+        
         const flamencoClient = window.supabase.createClient(S_URL, S_KEY);
 
         function toggleMenu() {
@@ -126,31 +128,16 @@
 
         async function init() {
             try {
-                // 1. التحقق من وجود جلسة نشطة
-                const { data: { session } } = await flamencoClient.auth.getSession();
+                // التحقق من تسجيل الدخول
+                const { data: { user } } = await flamencoClient.auth.getUser();
                 
-                if (!session) {
-                    window.location.href = 'admin-login.html';
-                    return;
+                if (!user) {
+                    // إذا لم يكن هناك مستخدم مسجل، توجه إلى صفحة تسجيل الدخول
+                    window.location.replace('admin-login.html');
+                    return; // نوقف تنفيذ باقي الدالة
                 }
 
-                const user = session.user;
-
-                // 2. التحقق من الرتبة (role) في جدول profiles
-                const { data: profile, error: profileError } = await flamencoClient
-                    .from('profiles')
-                    .select('role')
-                    .eq('id', user.id)
-                    .single();
-
-                if (profileError || !profile || profile.role !== 'admin') {
-                    alert("عذراً، لا تملك صلاحيات الوصول لهذه اللوحة.");
-                    await flamencoClient.auth.signOut();
-                    window.location.href = 'admin-login.html';
-                    return;
-                }
-
-                // تحديث واجهة المستخدم بالبيانات
+                // إذا كان هناك مستخدم، نعرض بياناته
                 document.getElementById('user-name').textContent = user.email.split('@')[0];
                 document.getElementById('user-avatar').textContent = user.email[0].toUpperCase();
 
@@ -158,10 +145,9 @@
 
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('content').style.display = 'grid';
-
             } catch (err) {
                 console.log("Init error:", err);
-                document.getElementById('loading-text').innerText = "فشل التحقق من الصلاحيات. يرجى إعادة تسجيل الدخول.";
+                document.getElementById('loading').innerHTML = "حدث خطأ أثناء المزامنة";
             }
         }
 
@@ -185,17 +171,13 @@
         }
 
         async function handleLogout() {
-            if (confirm("هل تريد تسجيل الخروج؟")) {
-                try {
-                    await flamencoClient.auth.signOut();
-                    window.location.replace('admin-login.html');
-                } catch (err) {
-                    window.location.href = 'admin-login.html';
-                }
+            if (confirm("هل تريد الخروج؟")) {
+                await flamencoClient.auth.signOut();
+                location.reload();
             }
         }
 
         document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
-</html>
+                </html>
