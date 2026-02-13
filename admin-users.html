@@ -8,62 +8,79 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
         :root { --main: #d63384; --bg: #121212; --card: #1e1e1e; --text: #eee; --danger: #dc3545; --success: #28a745; --warning: #ffc107; }
-        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: var(--text); padding: 15px; direction: rtl; margin: 0; }
         .back-btn { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 15px; color: var(--main); text-decoration: none; font-weight: bold; }
         .header { background: linear-gradient(135deg, var(--main), #9d174d); padding: 20px; text-align: center; border-radius: 15px; margin-bottom: 15px; }
-        .user-card { background: var(--card); border-radius: 12px; padding: 15px; margin-bottom: 10px; border-right: 5px solid var(--main); }
-        .user-card.banned-active { border-right-color: var(--warning); background: #2a2515; }
+        .search-container { position: relative; margin-bottom: 15px; }
+        .search-input { width: 100%; padding: 14px 45px 14px 15px; border-radius: 10px; border: 1px solid #333; background: #222; color: #fff; outline: none; }
+        .user-card { background: var(--card); border-radius: 12px; padding: 15px; margin-bottom: 10px; border-right: 5px solid var(--main); transition: 0.3s; }
+        .user-card.active-ban { border-right-color: var(--warning); background: #2a2110; }
+        .user-header { display: flex; justify-content: space-between; align-items: center; }
         .user-info { display: flex; align-items: center; gap: 12px; }
-        .user-avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; background: #333; }
-        .actions { display: flex; gap: 8px; margin-top: 12px; }
-        .btn { flex: 1; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .user-avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; background: #333; border: 1px solid #444; }
+        .gem-badge { background: #333; padding: 4px 10px; border-radius: 20px; font-size: 12px; color: #ffd700; border: 1px solid #555; display: flex; align-items: center; gap: 5px; }
+        .actions { display: flex; gap: 8px; margin-top: 15px; }
+        .btn { flex: 1; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; }
         .btn-delete { background: var(--danger); flex: 0.4; }
-        .ban-info { font-size: 11px; color: var(--warning); margin-top: 5px; }
+        .ban-expiry { font-size: 11px; color: var(--warning); margin-top: 5px; display: block; }
     </style>
 </head>
 <body>
 
     <a href="index.html" class="back-btn"><i class="fas fa-arrow-right"></i> العودة للرئيسية</a>
-    <div class="header"><h2>إدارة المستخدمين</h2></div>
+    <div class="header"><h2><i class="fas fa-users-cog"></i> إدارة المستخدمين</h2></div>
+
+    <div class="search-container">
+        <i class="fas fa-search" style="position: absolute; right: 15px; top: 18px; color: #888;"></i>
+        <input type="text" class="search-input" placeholder="ابحث باسم المستخدم أو البريد..." oninput="filterUsers(this.value)">
+    </div>
+
     <div id="list"></div>
 
     <script>
         const S_URL = 'https://yboxheficowekfzjatti.supabase.co';
         const S_KEY = 'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS';
         const _sb = window.supabase.createClient(S_URL, S_KEY);
+        let usersCache = [];
 
         async function loadData() {
             const { data, error } = await _sb.from('profiles').select('*').order('created_at', { ascending: false });
-            if (!error) render(data);
+            if (error) return;
+            usersCache = data || [];
+            render(usersCache);
         }
 
         function render(users) {
             const listDiv = document.getElementById('list');
+            const now = new Date();
+
             listDiv.innerHTML = users.map(u => {
-                // فحص هل الحظر مازال سارياً (مقارنة تاريخ اليوم بتاريخ انتهاء الحظر)
-                const now = new Date();
-                const banEnd = u.banned_until ? new Date(u.banned_until) : null;
-                const isCurrentlyBanned = u.is_banned && (banEnd && banEnd > now);
+                const banDate = u.banned_until ? new Date(u.banned_until) : null;
+                // الحظر فعال إذا كانت الخانة true والتاريخ لم ينتهِ بعد
+                const isCurrentlyBanned = u.is_banned && banDate && banDate > now;
+                const avatar = u.photo_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
 
                 return `
-                <div class="user-card ${isCurrentlyBanned ? 'banned-active' : ''}">
-                    <div class="user-info">
-                        <img src="${u.photo_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="user-avatar">
-                        <div>
-                            <div style="font-weight:bold;">${u.username || 'بدون اسم'}</div>
-                            <div style="font-size:12px; color:#888;">${u.email || 'لا يوجد بريد'}</div>
+                <div class="user-card ${isCurrentlyBanned ? 'active-ban' : ''}">
+                    <div class="user-header">
+                        <div class="user-info">
+                            <img src="${avatar}" class="user-avatar">
+                            <div>
+                                <div style="font-weight:bold;">${u.username || 'بدون اسم'}</div>
+                                <div style="font-size:12px; color:#888;">${u.email || 'لا يوجد بريد'}</div>
+                            </div>
                         </div>
+                        <div class="gem-badge"><i class="fas fa-gem"></i> ${u.gems || 10}</div>
                     </div>
-                    ${isCurrentlyBanned ? `<div class="ban-info"><i class="fas fa-clock"></i> ينتهي الحظر في: ${banEnd.toLocaleDateString('ar-EG')}</div>` : ''}
+                    ${isCurrentlyBanned ? `<span class="ban-expiry"><i class="fas fa-clock"></i> ينتهي الحظر: ${banDate.toLocaleDateString('ar-EG')}</span>` : ''}
                     <div class="actions">
                         <button class="btn" 
-                                onclick="handleBanToggle('${u.id}', ${isCurrentlyBanned})" 
+                                onclick="handleBanClick('${u.id}', ${isCurrentlyBanned})" 
                                 style="background: ${isCurrentlyBanned ? 'var(--success)' : 'var(--warning)'}; color: ${isCurrentlyBanned ? '#fff' : '#000'}">
                             <i class="fas ${isCurrentlyBanned ? 'fa-user-check' : 'fa-user-slash'}"></i>
                             ${isCurrentlyBanned ? 'فك الحظر الآن' : 'حظر 10 أيام'}
                         </button>
-                        <button class="btn btn-delete" onclick="handleFullDelete('${u.id}')">
+                        <button class="btn btn-delete" onclick="handlePermanentDelete('${u.id}')">
                             <i class="fas fa-trash-alt"></i> حذف نهائي
                         </button>
                     </div>
@@ -71,33 +88,40 @@
             }).join('');
         }
 
-        window.handleBanToggle = async (id, isBanned) => {
-            let updateData = {};
+        window.handleBanClick = async (userId, isBanned) => {
+            let updateFields = {};
             if (!isBanned) {
-                // حظر لمدة 10 أيام من الآن
                 const expiry = new Date();
                 expiry.setDate(expiry.getDate() + 10);
-                updateData = { is_banned: true, banned_until: expiry.toISOString() };
+                updateFields = { is_banned: true, banned_until: expiry.toISOString() };
             } else {
-                // فك الحظر
-                updateData = { is_banned: false, banned_until: null };
+                updateFields = { is_banned: false, banned_until: null };
             }
 
-            const { error } = await _sb.from('profiles').update(updateData).eq('id', id);
-            if (!error) await loadData(); 
+            const { error } = await _sb.from('profiles').update(updateFields).eq('id', userId);
+            if (!error) await loadData();
+            else alert("تأكد من إضافة عمود banned_until في Supabase أولاً");
         };
 
-        window.handleFullDelete = async (id) => {
-            if (!confirm("🚨 سيتم مسح المستخدم ورواياته نهائياً من كل الصفحات. استمرار؟")) return;
+        window.handlePermanentDelete = async (userId) => {
+            if (!confirm("🚨 سيتم حذف المستخدم ورواياته نهائياً. هل أنت متأكد؟")) return;
             
-            // حذف من جدول القصص أولاً ثم الملف الشخصي لضمان المسح الشامل
-            await _sb.from('stories').delete().eq('author_id', id); 
-            const { error } = await _sb.from('profiles').delete().eq('id', id);
-
+            // حذف الروايات ثم البروفايل
+            await _sb.from('stories').delete().eq('author_id', userId);
+            const { error } = await _sb.from('profiles').delete().eq('id', userId);
+            
             if (!error) {
-                alert("تم الحذف الشامل بنجاح");
-                await loadData(); // تحديث الواجهة فوراً
+                alert("تم الحذف بنجاح");
+                await loadData();
             }
+        };
+
+        window.filterUsers = (val) => {
+            const term = val.toLowerCase();
+            const filtered = usersCache.filter(u => 
+                u.username?.toLowerCase().includes(term) || u.email?.toLowerCase().includes(term)
+            );
+            render(filtered);
         };
 
         window.onload = loadData;
