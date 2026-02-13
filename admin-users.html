@@ -7,21 +7,19 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        :root { --main: #d63384; --bg: #121212; --card: #1e1e1e; --text: #eee; --danger: #dc3545; --success: #28a745; }
+        :root { --main: #d63384; --bg: #121212; --card: #1e1e1e; --text: #eee; --danger: #dc3545; --success: #28a745; --warning: #ffc107; }
         * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: var(--text); padding: 15px; direction: rtl; margin: 0; }
         
         .back-btn { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 15px; color: var(--main); text-decoration: none; font-weight: bold; font-size: 14px; }
-        
         .header { background: linear-gradient(135deg, var(--main), #9d174d); padding: 20px; text-align: center; border-radius: 15px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(214, 51, 132, 0.3); }
         .header h2 { margin: 0; font-size: 1.4rem; }
         
         .search-container { position: relative; margin-bottom: 15px; }
         .search-input { width: 100%; padding: 14px 45px 14px 15px; border-radius: 10px; border: 1px solid #333; background: #222; color: #fff; font-size: 16px; outline: none; transition: 0.3s; }
-        .search-input:focus { border-color: var(--main); box-shadow: 0 0 10px rgba(214, 51, 132, 0.2); }
         
-        .user-card { background: var(--card); border-radius: 12px; padding: 15px; margin-bottom: 10px; border-right: 5px solid var(--main); display: flex; flex-direction: column; gap: 12px; transition: 0.3s; }
-        .user-card.banned { border-right-color: var(--danger); background: #2a1515; }
+        .user-card { background: var(--card); border-radius: 12px; padding: 15px; margin-bottom: 10px; border-right: 5px solid var(--main); display: flex; flex-direction: column; gap: 12px; }
+        .user-card.banned { border-right-color: var(--warning); background: #2a2515; }
         
         .user-header { display: flex; justify-content: space-between; align-items: center; }
         .user-info { display: flex; align-items: center; gap: 12px; }
@@ -29,13 +27,13 @@
         
         .gem-badge { background: #333; padding: 4px 10px; border-radius: 20px; font-size: 12px; color: #ffd700; border: 1px solid #555; display: flex; align-items: center; gap: 5px; }
         
-        .actions { display: flex; gap: 10px; margin-top: 5px; }
-        .btn { flex: 1; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 13px; }
-        .btn-ban { background: var(--danger); }
+        .actions { display: flex; gap: 8px; margin-top: 5px; flex-wrap: wrap; }
+        .btn { flex: 1; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 12px; min-width: 100px; }
+        .btn-ban { background: var(--warning); color: #000; }
         .btn-unban { background: var(--success); }
-        .btn:active { transform: scale(0.96); }
-
-        .loading-state { text-align: center; padding: 50px; color: var(--main); }
+        .btn-delete { background: var(--danger); flex: 0.5; }
+        
+        .ban-timer { font-size: 11px; color: var(--warning); margin-top: -8px; margin-right: 57px; }
     </style>
 </head>
 <body>
@@ -51,7 +49,7 @@
         <input type="text" class="search-input" placeholder="ابحث باسم المستخدم أو البريد..." oninput="filterUsers(this.value)">
     </div>
 
-    <div id="list" class="loading-state">
+    <div id="list" class="loading-state" style="text-align: center; padding: 50px;">
         <i class="fas fa-spinner fa-spin fa-2x"></i>
         <p>جاري تحميل قائمة القراء...</p>
     </div>
@@ -62,31 +60,19 @@
         const _sb = window.supabase.createClient(S_URL, S_KEY);
         let usersCache = [];
 
-        async function init() {
-            loadData();
-        }
-
         async function loadData() {
             const { data, error } = await _sb.from('profiles').select('*').order('created_at', { ascending: false });
-            if (error) {
-                document.getElementById('list').innerHTML = `<div style="color:var(--danger); text-align:center;">خطأ في الاتصال: ${error.message}</div>`;
-                return;
-            }
+            if (error) return;
             usersCache = data || [];
             render(usersCache);
         }
 
         function render(users) {
             const listDiv = document.getElementById('list');
-            listDiv.classList.remove('loading-state');
-            
-            if (users.length === 0) {
-                listDiv.innerHTML = '<div style="text-align:center; padding:40px; color:#666;">لم يتم العثور على مستخدمين.</div>';
-                return;
-            }
-
-            listDiv.innerHTML = users.map(u => `
-                <div class="user-card ${u.is_banned ? 'banned' : ''}">
+            listDiv.innerHTML = users.map(u => {
+                const isBanned = u.is_banned;
+                return `
+                <div class="user-card ${isBanned ? 'banned' : ''}">
                     <div class="user-header">
                         <div class="user-info">
                             <div class="user-avatar"><i class="fas fa-user-circle"></i></div>
@@ -96,39 +82,60 @@
                             </div>
                         </div>
                         <div class="gem-badge">
-                            <i class="fas fa-gem"></i> ${u.gems || 0}
+                            <i class="fas fa-gem"></i> ${u.gems || 10}
                         </div>
                     </div>
+                    ${isBanned ? '<div class="ban-timer"><i class="fas fa-clock"></i> محظور مؤقتاً لمدة 10 أيام</div>' : ''}
                     <div class="actions">
-                        <button class="btn ${u.is_banned ? 'btn-unban' : 'btn-ban'}" onclick="handleBan('${u.id}', ${u.is_banned})">
-                            <i class="fas ${u.is_banned ? 'fa-user-check' : 'fa-user-slash'}"></i>
-                            ${u.is_banned ? 'إلغاء الحظر' : 'حظر الحساب'}
+                        <button class="btn ${isBanned ? 'btn-unban' : 'btn-ban'}" onclick="handleTempBan('${u.id}', ${isBanned})">
+                            <i class="fas ${isBanned ? 'fa-user-check' : 'fa-hourglass-half'}"></i>
+                            ${isBanned ? 'فك الحظر' : 'حظر 10 أيام'}
+                        </button>
+                        <button class="btn btn-delete" onclick="handlePermanentDelete('${u.id}')">
+                            <i class="fas fa-trash-alt"></i> حذف نهائي
                         </button>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
-        window.handleBan = async (id, status) => {
-            if (!confirm(`⚠️ هل أنت متأكد من ${status ? 'إلغاء حظر' : 'حظر'} هذا المستخدم؟`)) return;
+        // الحظر المؤقت (تعديل الحالة فقط)
+        window.handleTempBan = async (id, status) => {
+            const action = status ? 'فك حظر' : 'حظر (10 أيام)';
+            if (!confirm(`هل تريد ${action} هذا المستخدم؟`)) return;
+            
             const { error } = await _sb.from('profiles').update({ is_banned: !status }).eq('id', id);
-            if (!error) {
+            if (!error) loadData();
+            else alert("فشل الإجراء");
+        };
+
+        // الحذف النهائي (حذف الروايات ثم المستخدم)
+        window.handlePermanentDelete = async (id) => {
+            if (!confirm("⚠️ تحذير: سيتم حذف جميع روايات المستخدم وحسابه نهائياً. هل أنت متأكد؟")) return;
+
+            // 1. حذف الروايات أولاً (المرتبطة بـ author_id)
+            const { error: err1 } = await _sb.from('stories').delete().eq('author_id', id);
+            
+            // 2. حذف ملف المستخدم
+            const { error: err2 } = await _sb.from('profiles').delete().eq('id', id);
+
+            if (!err1 && !err2) {
+                alert("تم الحذف النهائي بنجاح. يمكن للمستخدم التسجيل مجدداً.");
                 loadData();
             } else {
-                alert("فشل الإجراء: " + error.message);
+                alert("حدث خطأ أثناء الحذف");
             }
         };
 
         window.filterUsers = (val) => {
             const term = val.toLowerCase();
             const filtered = usersCache.filter(u => 
-                (u.username && u.username.toLowerCase().includes(term)) || 
-                (u.email && u.email.toLowerCase().includes(term))
+                (u.username?.toLowerCase().includes(term)) || (u.email?.toLowerCase().includes(term))
             );
             render(filtered);
         };
 
-        window.onload = init;
+        window.onload = loadData;
     </script>
 </body>
 </html>
