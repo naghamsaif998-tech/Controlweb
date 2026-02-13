@@ -13,14 +13,18 @@
         .logo-container { display: flex; align-items: center; gap: 15px; }
         .logo { width: 40px; height: 40px; background: linear-gradient(135deg, var(--main), var(--secondary)); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px; }
         .site-title { color: var(--main); font-size: 22px; font-weight: bold; margin: 0; }
+        
+        /* القائمة الجانبية المعدلة */
+        .menu-container { position: relative; }
         .menu-icon { font-size: 22px; color: var(--main); cursor: pointer; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px; background: white; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; }
-        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; z-index: 9998; }
-        .overlay.active { display: block; }
-        .side-menu { position: fixed; top: 0; right: -300px; width: 280px; height: 100%; background: white; box-shadow: -5px 0 15px rgba(0,0,0,0.2); transition: 0.3s ease-in-out; display: flex; flex-direction: column; z-index: 9999; }
+        .side-menu { position: fixed; top: 0; right: -300px; width: 280px; height: 100%; background: white; box-shadow: -5px 0 15px rgba(0,0,0,0.1); transition: 0.3s ease; display: flex; flex-direction: column; z-index: 9999; }
         .side-menu.active { right: 0; }
         .side-menu-header { padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: var(--bg-light); }
         .side-menu a, .side-menu button { padding: 15px 20px; text-decoration: none; color: #495057; border-bottom: 1px solid #f1f3f5; text-align: right; font-size: 15px; background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: 0.3s; width: 100%; box-sizing: border-box; }
         .side-menu a:hover { background: var(--bg-light); color: var(--main); }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; z-index: 9998; }
+        .overlay.active { display: block; }
+
         main { padding: 20px; display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
         .card { background: #fff; padding: 25px; border-radius: 15px; border-right: 5px solid var(--main); box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e9ecef; transition: 0.3s; }
         .count { background: var(--bg-light); color: var(--main); padding: 4px 10px; border-radius: 20px; font-size: 13px; font-weight: bold; }
@@ -39,31 +43,30 @@
 
     <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
 
-    <nav class="side-menu" id="sideMenu">
-        <div class="side-menu-header">
-            <strong>القائمة الرئيسية</strong>
-            <i class="fas fa-times" onclick="toggleMenu()" style="cursor:pointer; color:var(--main)"></i>
-        </div>
-        <a href="admin-novels.html"><span><i class="fas fa-book"></i> الروايات</span> <span class="count" id="menu-stories">0</span></a>
-        <a href="admin-users.html"><span><i class="fas fa-users"></i> المستخدمين</span> <span class="count" id="menu-users">0</span></a>
-        <a href="admin-reports.html"><span><i class="fas fa-flag"></i> البلاغات</span> <span class="count" id="menu-reports">0</span></a>
-        <a href="admin-notifications.html"><span><i class="fas fa-bell"></i> الإشعارات</span></a>
-        <a href="admin-support.html"><span><i class="fas fa-headset"></i> الدعم</span> <span class="count" id="menu-support">0</span></a>
-        <a href="admin-settings.html" style="background: #fff0f6;"><span><i class="fas fa-user-shield"></i> إعدادات الفريق</span></a>
-        <button onclick="handleLogout()" style="color: var(--danger);"><i class="fas fa-sign-out-alt"></i> خروج آمن</button>
-    </nav>
-
     <header>
         <div class="logo-container">
             <div class="logo">ف</div>
             <div><h1 class="site-title">فلامنكو</h1><p class="site-subtitle">نظام الإدارة</p></div>
         </div>
         <div class="user-info">
-            <div id="user-name" style="font-size: 14px; color: #666;">جاري التحقق...</div>
+            <div id="user-name" style="font-size: 14px; color: #666;">زائر</div>
             <div class="user-avatar" id="user-avatar">?</div>
         </div>
         <div class="menu-container">
             <div class="menu-icon" onclick="toggleMenu()"><i class="fas fa-bars"></i></div>
+            <nav class="side-menu" id="sideMenu">
+                <div class="side-menu-header">
+                    <strong>القائمة الرئيسية</strong>
+                    <i class="fas fa-times" onclick="toggleMenu()" style="cursor:pointer; color:var(--main)"></i>
+                </div>
+                <a href="admin-novels.html"><span><i class="fas fa-book"></i> الروايات</span> <span class="count" id="menu-stories">0</span></a>
+                <a href="admin-users.html"><span><i class="fas fa-users"></i> المستخدمين</span> <span class="count" id="menu-users">0</span></a>
+                <a href="admin-reports.html"><span><i class="fas fa-flag"></i> البلاغات</span> <span class="count" id="menu-reports">0</span></a>
+                <a href="admin-notifications.html"><span><i class="fas fa-bell"></i> الإشعارات</span></a>
+                <a href="admin-support.html"><span><i class="fas fa-headset"></i> الدعم</span> <span class="count" id="menu-support">0</span></a>
+                <a href="admin-settings.html" style="background: #fff0f6;"><span><i class="fas fa-user-shield"></i> إعدادات الفريق</span></a>
+                <button onclick="handleLogout()" style="color: var(--danger);"><i class="fas fa-sign-out-alt"></i> خروج</button>
+            </nav>
         </div>
     </header>
 
@@ -75,7 +78,7 @@
 
     <div id="loading">
         <div class="spinner"></div>
-        <p id="loading-text">جاري التحقق من الصلاحيات...</p>
+        <p id="loading-text">جاري مزامنة البيانات والتحقق من الصلاحيات...</p>
     </div>
 
     <main id="content" style="display:none;">
@@ -117,15 +120,13 @@
         const flamencoClient = window.supabase.createClient(S_URL, S_KEY);
 
         function toggleMenu() {
-            const menu = document.getElementById('sideMenu');
-            const overlay = document.getElementById('overlay');
-            menu.classList.toggle('active');
-            overlay.classList.toggle('active');
+            document.getElementById('sideMenu').classList.toggle('active');
+            document.getElementById('overlay').classList.toggle('active');
         }
 
         async function init() {
             try {
-                // 1. التأكد من تسجيل الدخول
+                // 1. التحقق من وجود جلسة نشطة
                 const { data: { session } } = await flamencoClient.auth.getSession();
                 
                 if (!session) {
@@ -135,21 +136,21 @@
 
                 const user = session.user;
 
-                // 2. التحقق من الرتبة (Admin) من جدول profiles
-                const { data: profile, error } = await flamencoClient
+                // 2. التحقق من الرتبة (role) في جدول profiles
+                const { data: profile, error: profileError } = await flamencoClient
                     .from('profiles')
                     .select('role')
                     .eq('id', user.id)
                     .single();
 
-                if (error || !profile || profile.role !== 'admin') {
-                    alert("عذراً، ليس لديك صلاحيات المسؤول.");
+                if (profileError || !profile || profile.role !== 'admin') {
+                    alert("عذراً، لا تملك صلاحيات الوصول لهذه اللوحة.");
                     await flamencoClient.auth.signOut();
                     window.location.href = 'admin-login.html';
                     return;
                 }
 
-                // تحديث بيانات الهيدر
+                // تحديث واجهة المستخدم بالبيانات
                 document.getElementById('user-name').textContent = user.email.split('@')[0];
                 document.getElementById('user-avatar').textContent = user.email[0].toUpperCase();
 
@@ -159,8 +160,8 @@
                 document.getElementById('content').style.display = 'grid';
 
             } catch (err) {
-                console.error("Init error:", err);
-                document.getElementById('loading-text').textContent = "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً.";
+                console.log("Init error:", err);
+                document.getElementById('loading-text').innerText = "فشل التحقق من الصلاحيات. يرجى إعادة تسجيل الدخول.";
             }
         }
 
@@ -184,14 +185,11 @@
         }
 
         async function handleLogout() {
-            if (confirm("هل تريد الخروج حقاً؟")) {
+            if (confirm("هل تريد تسجيل الخروج؟")) {
                 try {
-                    const { error } = await flamencoClient.auth.signOut();
-                    if (error) throw error;
+                    await flamencoClient.auth.signOut();
                     window.location.replace('admin-login.html');
                 } catch (err) {
-                    console.error("Logout error:", err);
-                    // في حال فشل تسجيل الخروج برمجياً، يتم التحويل القسري
                     window.location.href = 'admin-login.html';
                 }
             }
