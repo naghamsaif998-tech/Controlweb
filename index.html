@@ -3,705 +3,174 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title id="pageTitle">لوحة تحكم المدير</title>
-    <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore-compat.js"></script>
-
-    <style>
-        /* CSS الأساسي للوحة التحكم */
-        body {
-            margin: 0;
-            font-family: 'Tahoma', sans-serif;
-            background: #f8f9fa;
-            color: #333;
-        }
-
-        :root {
-            --primary-color: #d63384; /* الفوشيا */
-            --primary-dark: #a82263;
-            --text-color: #333;
-            --error-color: #dc3545;
-        }
-
-        .admin-nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #fff;
-            padding: 10px 20px;
-            border-bottom: 2px solid var(--primary-color);
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            min-height: 55px;
-        }
-        
-        .nav-header {
-            display: flex;
-            align-items: center;
-            flex-grow: 1;
-            margin-right: 15px; /* مسافة عن أيقونة القائمة */
-        }
-        
-        .nav-header h1 {
-            font-size: 1.2rem;
-            margin: 0;
-            color: var(--primary-color);
-        }
-
-        /* تعديل اللوجو لاستخدام الرابط الخارجي */
-        .logo-img {
-            height: 40px; 
-            width: auto; /* للحفاظ على نسبة العرض إلى الارتفاع */
-            margin-left: 10px;
-        }
-
-        .menu-toggle {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            color: var(--primary-color);
-            cursor: pointer;
-            padding: 5px;
-        }
-
-        .menu {
-            display: none; /* إخفاء افتراضي على الهاتف */
-            position: absolute;
-            top: 100%;
-            right: 0;
-            width: 250px;
-            background: #fff;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            border: 1px solid #eee;
-            z-index: 20;
-            flex-direction: column;
-            padding: 10px 0;
-        }
-
-        .menu.active {
-            display: flex; /* إظهار عند التفعيل */
-        }
-
-        .menu a, .menu button {
-            text-decoration: none;
-            color: var(--text-color);
-            padding: 10px 20px;
-            display: flex;
-            align-items: center;
-            border: none;
-            background: none;
-            cursor: pointer;
-            width: 100%;
-            text-align: right;
-            box-sizing: border-box;
-        }
-
-        .menu a:hover, .menu button:hover {
-            background: #f1f1f1;
-        }
-
-        .menu i {
-            margin-left: 10px;
-            color: var(--primary-color);
-        }
-
-        .logout-btn {
-            color: var(--error-color) !important;
-            font-weight: bold;
-        }
-
-        main {
-            padding: 20px;
-        }
-
-        #loading, .unauthorized {
-            text-align: center;
-            padding: 50px;
-            font-size: 1.5rem;
-            color: #555;
-            font-weight: bold;
-        }
-
-        .cards-container {
-            display: grid;
-            gap: 20px;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        }
-
-        .card {
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            padding: 20px;
-            border-right: 5px solid var(--primary-color);
-            transition: transform 0.2s;
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .card h2 {
-            font-size: 1.3rem;
-            color: var(--primary-color);
-            margin-top: 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .card h2 span {
-            font-size: 1rem;
-            font-weight: normal;
-            background: #f0f0f0;
-            padding: 2px 8px;
-            border-radius: 4px;
-        }
-
-        .card p {
-            color: #777;
-            font-size: 0.9rem;
-            min-height: 40px;
-        }
-
-        .card .btn {
-            display: block;
-            text-align: center;
-            background: var(--primary-color);
-            color: #fff;
-            padding: 10px;
-            border-radius: 4px;
-            text-decoration: none;
-            margin-top: 15px;
-            transition: background-color 0.2s;
-            font-size: 0.9rem;
-        }
-
-        .card .btn:hover {
-            background: var(--primary-dark);
-        }
-
-        .lang-switcher {
-            padding: 10px 20px;
-            position: relative;
-            text-align: right;
-        }
-
-        .lang-toggle-btn {
-            background: #f1f1f1;
-            border: 1px solid #ddd;
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            margin-right: auto;
-        }
-
-        .lang-toggle-btn i {
-            margin-left: 5px;
-        }
-
-        .lang-dropdown {
-            display: none;
-            position: absolute;
-            background: #fff;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            z-index: 30;
-            margin-top: 5px;
-            border-radius: 4px;
-            border: 1px solid #eee;
-            right: 20px;
-        }
-
-        .lang-dropdown.active {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .lang-dropdown button {
-            padding: 8px 15px;
-            border: none;
-            background: none;
-            text-align: right;
-            width: 100%;
-            cursor: pointer;
-        }
-
-        .lang-dropdown button:hover {
-            background: #f8f8f8;
-        }
-
-        /* تنسيقات الشاشات الكبيرة (لإخفاء القائمة المنسدلة وإظهارها جانبياً) */
-        @media (min-width: 992px) {
-            .admin-nav {
-                justify-content: flex-start;
-                padding: 10px 50px;
-                flex-wrap: nowrap;
-            }
-
-            .nav-header {
-                flex-grow: 0;
-            }
-
-            .menu-toggle {
-                display: none;
-            }
-
-            .menu {
-                display: flex !important;
-                position: static;
-                box-shadow: none;
-                border: none;
-                flex-direction: row;
-                width: auto;
-                flex-grow: 1;
-                justify-content: flex-end;
-                align-items: center;
-                padding: 0;
-                margin-right: 20px;
-            }
-
-            .menu a, .menu button {
-                padding: 5px 15px;
-                width: auto;
-            }
-
-            .menu hr {
-                display: none;
-            }
-            
-            .logout-btn {
-                margin-right: 15px; /* فصل زر الخروج */
-            }
-
-            .lang-switcher {
-                padding: 0;
-                position: static;
-            }
-
-            .lang-dropdown {
-                right: auto;
-                left: 0;
-                top: 100%;
-            }
-        }
-    </style>
+    <title>لوحة تحكم فلامنكو الشاملة</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        :root { --main: #d63384; --secondary: #9d174d; --bg-light: #fdf2f8; --danger: #dc3545; --info: #17a2b8; }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, sans-serif; background: #f8f9fa; color: #333; overflow-x: hidden; }
+        header { background: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--main); position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .logo-container { display: flex; align-items: center; gap: 15px; }
+        .logo { width: 40px; height: 40px; background: linear-gradient(135deg, var(--main), var(--secondary)); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px; }
+        .site-title { color: var(--main); font-size: 22px; font-weight: bold; margin: 0; }
+        
+        /* القائمة الجانبية المعدلة */
+        .menu-container { position: relative; }
+        .menu-icon { font-size: 22px; color: var(--main); cursor: pointer; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px; background: white; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; }
+        .side-menu { position: fixed; top: 0; right: -300px; width: 280px; height: 100%; background: white; box-shadow: -5px 0 15px rgba(0,0,0,0.1); transition: 0.3s ease; display: flex; flex-direction: column; z-index: 9999; }
+        .side-menu.active { right: 0; }
+        .side-menu-header { padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: var(--bg-light); }
+        .side-menu a, .side-menu button { padding: 15px 20px; text-decoration: none; color: #495057; border-bottom: 1px solid #f1f3f5; text-align: right; font-size: 15px; background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: 0.3s; width: 100%; box-sizing: border-box; }
+        .side-menu a:hover { background: var(--bg-light); color: var(--main); }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; z-index: 9998; }
+        .overlay.active { display: block; }
+
+        main { padding: 20px; display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+        .card { background: #fff; padding: 25px; border-radius: 15px; border-right: 5px solid var(--main); box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e9ecef; transition: 0.3s; }
+        .count { background: var(--bg-light); color: var(--main); padding: 4px 10px; border-radius: 20px; font-size: 13px; font-weight: bold; }
+        .btn { display: block; background: linear-gradient(135deg, var(--main), var(--secondary)); color: #fff; text-align: center; padding: 10px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 15px; border: none; cursor: pointer; }
+        #loading { text-align: center; margin: 100px auto; color: var(--main); }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--main); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .quick-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin: 20px; }
+        .stat-item { background: white; padding: 15px; border-radius: 10px; display: flex; align-items: center; gap: 10px; border: 1px solid #e9ecef; }
+        .stat-value { font-size: 20px; font-weight: bold; color: var(--main); }
+        .user-info { display: flex; align-items: center; gap: 10px; }
+        .user-avatar { width: 35px; height: 35px; background: var(--main); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+    </style>
 </head>
 <body>
-    <nav class="admin-nav">
-        <div class="nav-actions">
-            <button id="menuToggle" class="menu-toggle" aria-label="Toggle Menu">
-                <i class="fas fa-bars"></i>
-            </button>
-        </div>
-        <div class="nav-header">
-            <img src="https://i.postimg.cc/TwcdFYY5/img-1754957743454.png" alt="Logo" class="logo-img">
-            <h1 id="headerTitle">لوحة تحكم المدير</h1>
-        </div>
-        <div id="navMenu" class="menu">
-            <a id="menuNovelsLink" href="admin-novels.html"><i class="fas fa-book"></i> إدارة الروايات</a>
-            <a id="menuUsersLink" href="admin-users.html"><i class="fas fa-users"></i> إدارة المستخدمين</a>
-            <a id="menuReportsLink" href="admin-reports.html"><i class="fas fa-flag"></i> إدارة البلاغات</a>
-            <a id="menuSupportLink" href="admin-support.html"><i class="fas fa-headset"></i> رسائل الدعم</a>
-            <a id="menuNotificationsLink" href="admin-notifications.html"><i class="fas fa-bell"></i> الإشعارات</a>
-            <a id="menuWalletLink" href="admin-wallet.html"><i class="fas fa-wallet"></i> المحفظة (طلبات سحب)</a>
-            <hr>
-            <a id="menuSettingsLink" href="admin-settings.html"><i class="fas fa-cogs"></i> الإعدادات العامة</a>
-            <hr>
 
-            <div class="lang-switcher">
-                <button id="changeLangBtn" class="lang-toggle-btn">
-                    <span>تغيير اللغة</span>
-                    <i class="fas fa-globe"></i>
-                </button>
-                <div id="langOptions" class="lang-dropdown">
-                    <button data-lang="ar">العربية</button>
-                    <button data-lang="en">English</button>
+    <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+
+    <header>
+        <div class="logo-container">
+            <div class="logo">ف</div>
+            <div><h1 class="site-title">فلامنكو</h1><p class="site-subtitle">نظام الإدارة</p></div>
+        </div>
+        <div class="user-info">
+            <div id="user-name" style="font-size: 14px; color: #666;">زائر</div>
+            <div class="user-avatar" id="user-avatar">?</div>
+        </div>
+        <div class="menu-container">
+            <div class="menu-icon" onclick="toggleMenu()"><i class="fas fa-bars"></i></div>
+            <nav class="side-menu" id="sideMenu">
+                <div class="side-menu-header">
+                    <strong>القائمة الرئيسية</strong>
+                    <i class="fas fa-times" onclick="toggleMenu()" style="cursor:pointer; color:var(--main)"></i>
                 </div>
-            </div>
-
-            <button id="menuLogoutLink" class="btn logout-btn"><i class="fas fa-sign-out-alt"></i> تسجيل الخروج</button>
+                <a href="admin-novels.html"><span><i class="fas fa-book"></i> الروايات</span> <span class="count" id="menu-stories">0</span></a>
+                <a href="admin-users.html"><span><i class="fas fa-users"></i> المستخدمين</span> <span class="count" id="menu-users">0</span></a>
+                <a href="admin-reports.html"><span><i class="fas fa-flag"></i> البلاغات</span> <span class="count" id="menu-reports">0</span></a>
+                <a href="admin-notifications.html"><span><i class="fas fa-bell"></i> الإشعارات</span></a>
+                <a href="admin-support.html"><span><i class="fas fa-headset"></i> الدعم</span> <span class="count" id="menu-support">0</span></a>
+                <a href="admin-settings.html" style="background: #fff0f6;"><span><i class="fas fa-user-shield"></i> إعدادات الفريق</span></a>
+                <button onclick="handleLogout()" style="color: var(--danger);"><i class="fas fa-sign-out-alt"></i> خروج</button>
+            </nav>
         </div>
-    </nav>
+    </header>
 
-    <main>
-        <div id="loading">جارٍ تحميل البيانات...</div>
-        <div class="unauthorized" style="display:none;"></div>
-        <div id="cardsContainer" class="cards-container" style="display:none;">
+    <div class="quick-stats" id="quick-stats">
+        <div class="stat-item"><div>الروايات</div><div id="stat-stories" class="stat-value">0</div></div>
+        <div class="stat-item"><div>المستخدمين</div><div id="stat-users" class="stat-value">0</div></div>
+        <div class="stat-item"><div>بلاغات</div><div id="stat-reports" class="stat-value">0</div></div>
+    </div>
 
-            <div id="novels-card" class="card">
-                <h2 id="novelsCardTitle">الروايات <span>(...)</span></h2>
-                <p id="novelsCardDesc">عرض وإدارة جميع الروايات المنشورة.</p>
-                <a id="novelsCardBtn" href="admin-novels.html" class="btn">إدارة الروايات</a>
-            </div>
+    <div id="loading">
+        <div class="spinner"></div>
+        <p>جاري تحديث البيانات...</p>
+    </div>
 
-            <div id="users-card" class="card">
-                <h2 id="usersCardTitle">المستخدمون <span>(...)</span></h2>
-                <p id="usersCardDesc">عرض وإدارة حسابات المستخدمين.</p>
-                <a id="usersCardBtn" href="admin-users.html" class="btn">إدارة المستخدمين</a>
-            </div>
-
-            <div id="reports-card" class="card">
-                <h2 id="reportsCardTitle">البلاغات <span>(...)</span></h2>
-                <p id="reportsCardDesc">مراجعة ومعالجة البلاغات المرسلة.</p>
-                <a id="reportsCardBtn" href="admin-reports.html" class="btn">إدارة البلاغات</a>
-            </div>
-
-            <div id="support-card" class="card">
-                <h2 id="supportCardTitle">رسائل الدعم <span>(...)</span></h2>
-                <p id="supportCardDesc">مراجعة والرد على رسائل الدعم الفني.</p>
-                <a id="supportCardBtn" href="admin-support.html" class="btn">إدارة الرسائل</a>
-            </div>
-
-            <div id="notifications-card" class="card">
-                <h2 id="notificationsCardTitle">الإشعارات <span>(...)</span></h2>
-                <p id="notificationsCardDesc">إرسال إشعارات جماعية وخاصة للمستخدمين.</p>
-                <a id="notificationsCardBtn" href="admin-notifications.html" class="btn">إدارة الإشعارات</a>
-            </div>
-
-            <div id="wallet-card" class="card">
-                <h2 id="walletCardTitle">طلبات السحب <span>(...)</span></h2>
-                <p id="walletCardDesc">مراجعة طلبات سحب الأرباح المعلقة.</p>
-                <a id="walletCardBtn" href="admin-wallet.html" class="btn">إدارة المحفظة</a>
-            </div>
-
-            <div id="settings-card" class="card">
-                <h2 id="appCardTitle">الإعدادات العامة <span>(...)</span></h2>
-                <p id="appCardDesc">تعديل إعدادات هوية وتكوينات النظام.</p>
-                <a id="appCardBtn" href="admin-settings.html" class="btn">الإعدادات</a>
-            </div>
-
+    <main id="content" style="display:none;">
+        <div class="card">
+            <h3>الروايات <span id="c_stories" class="count">0</span></h3>
+            <p>مراجعة وحذف وإدارة محتوى الروايات.</p>
+            <a href="admin-novels.html" class="btn">إدارة</a>
+        </div>
+        <div class="card">
+            <h3>المستخدمين <span id="c_users" class="count">0</span></h3>
+            <p>التحكم في العضويات والحظر.</p>
+            <a href="admin-users.html" class="btn">إدارة</a>
+        </div>
+        <div class="card">
+            <h3>البلاغات <span id="c_reports" class="count">0</span></h3>
+            <p>مراجعة شكاوى المستخدمين.</p>
+            <a href="admin-reports.html" class="btn">إدارة</a>
+        </div>
+        <div class="card">
+            <h3>نظام الإشعارات</h3>
+            <p>إرسال تنبيهات عامة أو خاصة للأعضاء.</p>
+            <a href="admin-notifications.html" class="btn" style="background: var(--info);">إرسال</a>
+        </div>
+        <div class="card">
+            <h3>الدعم الفني <span id="c_support" class="count">0</span></h3>
+            <p>الرد على الرسائل المباشرة.</p>
+            <a href="admin-support.html" class="btn">إدارة</a>
+        </div>
+        <div class="card" style="border-right-color: #495057;">
+            <h3>إعدادات الفريق</h3>
+            <p>إدارة المشرفين وتحديد صلاحيات الوصول.</p>
+            <a href="admin-settings.html" class="btn" style="background: #495057;">إدارة الفريق</a>
         </div>
     </main>
 
-    <script>  
-        // وظيفة تبديل القائمة الجانبية   
-        const navMenu = document.getElementById('navMenu');  
-        const menuToggle = document.getElementById('menuToggle');  
-        if(menuToggle) {  
-            menuToggle.addEventListener('click', () => {  
-                if(navMenu) navMenu.classList.toggle('active');  
-            });  
-        }  
-      
-        // وظيفة تبديل قائمة اللغة   
-        const langOptions = document.getElementById('langOptions');  
-        const changeLangBtn = document.getElementById('changeLangBtn');  
-        if(changeLangBtn) {  
-            changeLangBtn.addEventListener('click', (e) => {  
-                e.stopPropagation();   
-                if(langOptions) langOptions.classList.toggle('active');  
-            });  
-        }  
-      
-        // إغلاق قائمة اللغة عند النقر في أي مكان آخر  
-        document.addEventListener('click', (e) => {  
-            if (langOptions && !langOptions.contains(e.target) && langOptions.classList.contains('active')) {  
-                langOptions.classList.remove('active');  
-            }  
-        });  
-      
-    </script>
-
     <script>
-        // =========================================================================
-        // تهيئة Firebase في وضع التوافق (Compat Mode)
-        // =========================================================================
+        const S_URL = 'https://yboxheficowekfzjatti.supabase.co';
+        const S_KEY = 'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS';
         
-        const getCountFromSnapshot = async (collectionName, q) => {
+        const flamencoClient = window.supabase.createClient(S_URL, S_KEY);
+
+        function toggleMenu() {
+            document.getElementById('sideMenu').classList.toggle('active');
+            document.getElementById('overlay').classList.toggle('active');
+        }
+
+        async function init() {
             try {
-                const snapshot = await (q ? q.get() : firebase.firestore().collection(collectionName).get());
-                return snapshot.size;
-            } catch (error) {
-                console.error(`Error getting count for ${collectionName} using snapshot:`, error);
-                return 0;
-            }
-        };
-
-        const ar = {
-            admin_dashboard_title: "لوحة تحكم المدير",
-            menu_novels_link: "إدارة الروايات",
-            menu_users_link: "إدارة المستخدمين",
-            menu_reports_link: "إدارة البلاغات",
-            menu_support_link: "رسائل الدعم",
-            menu_notifications_link: "الإشعارات",
-            menu_wallet_link: "المحفظة (طلبات سحب)",
-            menu_settings_link: "الإعدادات العامة",
-            menu_logout_link: "تسجيل الخروج",
-            dashboard_loading: "جارٍ تحميل بيانات لوحة التحكم...",
-            dashboard_loading_error: "فشل في تحميل البيانات. تحقق من اتصالك أو قواعد Firebase.",
-            unauthorized_access: "وصول غير مصرح به. يجب أن تكون مديرًا.",
-            novels_card_title: "الروايات",
-            novels_card_desc: "عرض وإدارة جميع الروايات المنشورة.",
-            novels_card_btn: "إدارة الروايات",
-            users_card_title: "المستخدمون",
-            users_card_desc: "عرض وإدارة حسابات المستخدمين.",
-            users_card_btn: "إدارة المستخدمين",
-            reports_card_title: "البلاغات",
-            reports_card_desc: "مراجعة ومعالجة البلاغات المرسلة.",
-            reports_card_btn: "إدارة البلاغات",
-            support_card_title: "رسائل الدعم",
-            support_card_desc: "مراجعة والرد على رسائل الدعم الفني.",
-            support_card_btn: "إدارة الرسائل",
-            notifications_card_title: "الإشعارات",
-            notifications_card_desc: "إرسال إشعارات جماعية وخاصة للمستخدمين.",
-            notifications_card_btn: "إدارة الإشعارات",
-            wallet_card_title: "طلبات السحب",
-            wallet_card_desc: "مراجعة طلبات سحب الأرباح المعلقة.",
-            wallet_card_btn: "إدارة المحفظة",
-            app_card_title: "الإعدادات العامة",
-            app_card_desc: "تعديل إعدادات هوية وتكوينات النظام.",
-            app_card_btn: "الإعدادات",
-            change_lang_menu: "تغيير اللغة",
-            generic_error: "حدث خطأ غير معروف.",
-        };
-
-        const en = {
-            admin_dashboard_title: "Flamenco Admin Dashboard",
-            menu_novels_link: "Manage Novels",
-            menu_users_link: "Manage Users",
-            menu_reports_link: "Manage Reports",
-            menu_support_link: "Support Messages",
-            menu_notifications_link: "Notifications",
-            menu_wallet_link: "Wallet (Withdrawals)",
-            menu_settings_link: "General Settings",
-            menu_logout_link: "Logout",
-            dashboard_loading: "Loading dashboard data...",
-            dashboard_loading_error: "Failed to load data. Check your connection or Firebase settings.",
-            unauthorized_access: "Unauthorized access. You must be an administrator.",
-            novels_card_title: "Novels",
-            novels_card_desc: "View and manage all published novels.",
-            novels_card_btn: "Manage Novels",
-            users_card_title: "Users",
-            users_card_desc: "View and manage user accounts.",
-            users_card_btn: "Manage Users",
-            reports_card_title: "Reports",
-            reports_card_desc: "Review and process submitted reports.",
-            reports_card_btn: "Manage Reports",
-            support_card_title: "Support Messages",
-            support_card_desc: "Review and reply to technical support messages.",
-            support_card_btn: "Manage Messages",
-            notifications_card_title: "Notifications",
-            notifications_card_desc: "Send mass and private notifications to users.",
-            notifications_card_btn: "Manage Notifications",
-            wallet_card_title: "Withdrawal Requests",
-            wallet_card_desc: "Review pending profit withdrawal requests.",
-            wallet_card_btn: "Manage Wallet",
-            app_card_title: "General Settings",
-            app_card_desc: "Modify system configuration and identity settings.",
-            app_card_btn: "Settings",
-            change_lang_menu: "Change Language",
-            generic_error: "An unknown error occurred.",
-        };
-        
-        const languages = { ar, en };
-        let currentLang = 'ar';
-        let langStrings = ar;
-
-        const savedLang = localStorage.getItem('lang');
-        if (savedLang && languages[savedLang]) {
-            currentLang = savedLang;
-        }
-        langStrings = languages[currentLang];
-        document.documentElement.setAttribute('lang', currentLang);
-        document.documentElement.setAttribute('dir', currentLang === 'ar' ? 'rtl' : 'ltr');
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyBqu1PFyeQbDXeNwqdBqrIrXtm5Bs4x_fE",
-            authDomain: "flamenco-novels-cf804.firebaseapp.com",
-            projectId: "flamenco-novels-cf804",
-            storageBucket: "flamenco-novels-cf804.firebasestorage.app",
-            messagingSenderId: "356143382345",
-            appId: "1:356143382345:web:ac7c1ad71139e1cbc02498",
-            measurementId: "G-39TTL4TDDG"
-        };
-
-        const app = firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-        const signOut = firebase.auth().signOut.bind(firebase.auth());
-
-        const elements = {
-            pageTitle: document.getElementById('pageTitle'),
-            headerTitle: document.getElementById('headerTitle'),
-            menuLogoutLink: document.getElementById('menuLogoutLink'),
-            loading: document.getElementById('loading'),
-            cardsContainer: document.getElementById('cardsContainer'),
-            changeLangBtn: document.getElementById('changeLangBtn'),
-            langOptions: document.getElementById('langOptions'),
-        };
-
-        function updateUIStrings() {
-            if (elements.pageTitle) elements.pageTitle.textContent = langStrings.admin_dashboard_title;
-            if (elements.headerTitle) elements.headerTitle.textContent = langStrings.admin_dashboard_title;
-            if (elements.menuLogoutLink) elements.menuLogoutLink.innerHTML = `<i class="fas fa-sign-out-alt"></i> ${langStrings.menu_logout_link}`;
-            if (elements.loading) elements.loading.textContent = langStrings.dashboard_loading;
-
-            const getCountDisplay = (value) => value !== undefined ? `(${value})` : '(...)';
-
-            if (document.getElementById('menuNovelsLink')) document.getElementById('menuNovelsLink').innerHTML = `<i class="fas fa-book"></i> ${langStrings.menu_novels_link}`;
-            if (document.getElementById('menuUsersLink')) document.getElementById('menuUsersLink').innerHTML = `<i class="fas fa-users"></i> ${langStrings.menu_users_link}`;
-            if (document.getElementById('menuReportsLink')) document.getElementById('menuReportsLink').innerHTML = `<i class="fas fa-flag"></i> ${langStrings.menu_reports_link}`;
-            if (document.getElementById('menuSupportLink')) document.getElementById('menuSupportLink').innerHTML = `<i class="fas fa-headset"></i> ${langStrings.menu_support_link}`;
-            if (document.getElementById('menuNotificationsLink')) document.getElementById('menuNotificationsLink').innerHTML = `<i class="fas fa-bell"></i> ${langStrings.menu_notifications_link}`;
-            if (document.getElementById('menuWalletLink')) document.getElementById('menuWalletLink').innerHTML = `<i class="fas fa-wallet"></i> ${langStrings.menu_wallet_link}`;
-            if (document.getElementById('menuSettingsLink')) document.getElementById('menuSettingsLink').innerHTML = `<i class="fas fa-cogs"></i> ${langStrings.menu_settings_link}`;
-
-            if (document.getElementById('novelsCardTitle')) document.getElementById('novelsCardTitle').innerHTML = `${langStrings.novels_card_title} <span id="novelsCount">${getCountDisplay(window.novelsCountValue)}</span>`;
-            if (document.getElementById('novelsCardDesc')) document.getElementById('novelsCardDesc').textContent = langStrings.novels_card_desc;
-            if (document.getElementById('novelsCardBtn')) document.getElementById('novelsCardBtn').textContent = langStrings.novels_card_btn;
-
-            if (document.getElementById('usersCardTitle')) document.getElementById('usersCardTitle').innerHTML = `${langStrings.users_card_title} <span id="usersCount">${getCountDisplay(window.usersCountValue)}</span>`;
-            if (document.getElementById('usersCardDesc')) document.getElementById('usersCardDesc').textContent = langStrings.users_card_desc;
-            if (document.getElementById('usersCardBtn')) document.getElementById('usersCardBtn').textContent = langStrings.users_card_btn;
-            
-            if (document.getElementById('reportsCardTitle')) document.getElementById('reportsCardTitle').innerHTML = `${langStrings.reports_card_title} <span id="reportsCount">${getCountDisplay(window.reportsCountValue)}</span>`;
-            if (document.getElementById('reportsCardDesc')) document.getElementById('reportsCardDesc').textContent = langStrings.reports_card_desc;
-            if (document.getElementById('reportsCardBtn')) document.getElementById('reportsCardBtn').textContent = langStrings.reports_card_btn;
-
-            if (document.getElementById('supportCardTitle')) document.getElementById('supportCardTitle').innerHTML = `${langStrings.support_card_title} <span id="supportCount">${getCountDisplay(window.supportCountValue)}</span>`;
-            if (document.getElementById('supportCardDesc')) document.getElementById('supportCardDesc').textContent = langStrings.support_card_desc;
-            if (document.getElementById('supportCardBtn')) document.getElementById('supportCardBtn').textContent = langStrings.support_card_btn;
-
-            if (document.getElementById('notificationsCardTitle')) document.getElementById('notificationsCardTitle').innerHTML = `${langStrings.notifications_card_title} <span id="notificationsCount">${getCountDisplay(window.notificationsCountValue)}</span>`;
-            if (document.getElementById('notificationsCardDesc')) document.getElementById('notificationsCardDesc').textContent = langStrings.notifications_card_desc;
-            if (document.getElementById('notificationsCardBtn')) document.getElementById('notificationsCardBtn').textContent = langStrings.notifications_card_btn;
-
-            if (document.getElementById('walletCardTitle')) document.getElementById('walletCardTitle').innerHTML = `${langStrings.wallet_card_title} <span id="walletCount">${getCountDisplay(window.walletCountValue)}</span>`;
-            if (document.getElementById('walletCardDesc')) document.getElementById('walletCardDesc').textContent = langStrings.wallet_card_desc;
-            if (document.getElementById('walletCardBtn')) document.getElementById('walletCardBtn').textContent = langStrings.wallet_card_btn;
-            
-            if (document.getElementById('appCardTitle')) document.getElementById('appCardTitle').innerHTML = `${langStrings.app_card_title} <span id="appCount">${getCountDisplay(window.appCountValue)}</span>`;
-            if (document.getElementById('appCardDesc')) document.getElementById('appCardDesc').textContent = langStrings.app_card_desc;
-            if (document.getElementById('appCardBtn')) document.getElementById('appCardBtn').textContent = langStrings.app_card_btn;
-
-            if (elements.changeLangBtn) {
-                const span = elements.changeLangBtn.querySelector('span');
-                if (span) span.textContent = langStrings.change_lang_menu;
-            }
-        }
-
-        function setLanguage(lang) {
-            currentLang = lang;
-            langStrings = languages[lang];
-            localStorage.setItem('lang', lang);
-            document.documentElement.setAttribute('lang', lang);
-            document.documentElement.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
-            updateUIStrings();
-            if (document.getElementById("langOptions")) {
-                document.getElementById("langOptions").classList.remove("active");
-            }
-        }
-        window.setLanguage = setLanguage;
-        
-        async function getCollectionCount(collectionName) {
-            try {
-                const count = await getCountFromSnapshot(collectionName);
-                return count;
-            } catch (error) {
-                console.error(`Error getting count for ${collectionName}:`, error);
-                return 0;
-            }
-        }
-        
-        async function getPendingWithdrawalRequestsCount() {
-            try {
-                const q = db.collection("withdrawalRequests").where("status", "==", "pending");
-                const count = await getCountFromSnapshot("withdrawalRequests", q);
-                return count;
-            } catch (error) {
-                console.error("Error getting pending withdrawal requests count:", error);
-                return 0;
-            }
-        }
-
-        async function fetchAndDisplayCounts() {
-            if (elements.loading) {
-                elements.loading.textContent = langStrings.dashboard_loading;
-            }
-
-            try {
-                const [novelsCount, usersCount, reportsCount, supportCount, walletCount] = await Promise.all([
-                    getCollectionCount('novels'),
-                    getCollectionCount('users'),
-                    getCollectionCount('reports'),
-                    getCollectionCount('supportMessages'),
-                    getPendingWithdrawalRequestsCount()
-                ]);
-                
-                window.novelsCountValue = novelsCount;
-                window.usersCountValue = usersCount;
-                window.reportsCountValue = reportsCount;
-                window.supportCountValue = supportCount;
-                window.notificationsCountValue = 0; 
-                window.walletCountValue = walletCount;
-                window.appCountValue = 1; 
-
-                updateUIStrings();
-
-                if (elements.loading) {
-                    elements.loading.style.display = 'none';
-                }
-                if (elements.cardsContainer) {
-                    elements.cardsContainer.style.display = 'grid';
-                }
-
-            } catch (error) {
-                console.error("Dashboard load error:", error);
-                if (elements.loading) {
-                    elements.loading.textContent = `${langStrings.dashboard_loading_error}\n${error.message}`;
-                    elements.loading.style.color = "red";
-                    elements.loading.style.display = 'block';
-                }
-            }
-        }
-
-        document.addEventListener("DOMContentLoaded", () => {
-            updateUIStrings();
-            firebase.auth().onAuthStateChanged((user) => {
+                const { data: { user } } = await flamencoClient.auth.getUser();
                 if (user) {
-                    fetchAndDisplayCounts();
-                } else {
-                    window.location.href = "admin-login.html";
+                    document.getElementById('user-name').textContent = user.email.split('@')[0];
+                    document.getElementById('user-avatar').textContent = user.email[0].toUpperCase();
                 }
-            });
 
-            if (elements.menuLogoutLink) {
-                elements.menuLogoutLink.addEventListener("click", (e) => {
-                    e.preventDefault();
-                    signOut(auth).then(() => {
-                        window.location.href = "admin-login.html";
-                    }).catch(error => {
-                        console.error("Logout Error:", error);
-                        alert("حدث خطأ أثناء تسجيل الخروج.");
+                await fetchStats();
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'grid';
+            } catch (err) {
+                console.log("Init error:", err);
+                document.getElementById('loading').innerHTML = "حدث خطأ أثناء المزامنة";
+            }
+        }
+
+        async function fetchStats() {
+            const tables = {
+                stories: ['c_stories', 'stat-stories', 'menu-stories'],
+                profiles: ['c_users', 'stat-users', 'menu-users'],
+                reports: ['c_reports', 'stat-reports', 'menu-reports'],
+                support_messages: ['c_support', 'menu-support']
+            };
+
+            for (const [table, ids] of Object.entries(tables)) {
+                try {
+                    const { count } = await flamencoClient.from(table).select('*', { count: 'exact', head: true });
+                    ids.forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) el.innerText = count || 0;
                     });
-                });
+                } catch (e) { console.error(table + " error"); }
             }
+        }
 
-            if (document.getElementById('langOptions')) {
-                document.getElementById('langOptions').querySelectorAll("button").forEach((btn) => {
-                    btn.addEventListener("click", (e) => {
-                        const lang = e.target.dataset.lang;
-                        setLanguage(lang);
-                    });
-                });
+        async function handleLogout() {
+            if (confirm("هل تريد الخروج؟")) {
+                await flamencoClient.auth.signOut();
+                location.reload();
             }
-        });
+        }
 
-        window.addEventListener('error', function(e) {
-            console.error('Global error caught:', e.error);
-            if (elements.loading) {
-                elements.loading.innerHTML = `خطأ في تحميل الصفحة<br>الخطأ: ${e.message}`;
-                elements.loading.style.color = "red";
-                elements.loading.style.display = 'block';
-            }
-        });
+        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
+
