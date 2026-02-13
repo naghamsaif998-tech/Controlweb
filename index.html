@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>index</title> <!-- تم تغيير العنوان إلى index -->
+    <title>index</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        /* الأنماط كما هي دون تغيير */
         :root { --main: #d63384; --secondary: #9d174d; --bg-light: #fdf2f8; --danger: #dc3545; --info: #17a2b8; }
         body { margin: 0; font-family: 'Segoe UI', Tahoma, sans-serif; background: #f8f9fa; color: #333; overflow-x: hidden; }
         header { background: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--main); position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
@@ -15,15 +14,15 @@
         .logo { width: 40px; height: 40px; background: linear-gradient(135deg, var(--main), var(--secondary)); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px; }
         .site-title { color: var(--main); font-size: 22px; font-weight: bold; margin: 0; }
         
-        /* القائمة الجانبية المعدلة */
+        /* القائمة الجانبية */
         .menu-container { position: relative; }
         .menu-icon { font-size: 22px; color: var(--main); cursor: pointer; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px; background: white; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; }
-        .side-menu { position: fixed; top: 0; right: -300px; width: 280px; height: 100%; background: white; box-shadow: -5px 0 15px rgba(0,0,0,0.1); transition: 0.3s ease; display: flex; flex-direction: column; z-index: 9999; }
+        .side-menu { position: fixed; top: 0; right: -300px; width: 280px; height: 100%; background: white; box-shadow: -5px 0 15px rgba(0,0,0,0.1); transition: 0.3s ease; display: flex; flex-direction: column; z-index: 10000; } /* زيادة z-index */
         .side-menu.active { right: 0; }
         .side-menu-header { padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: var(--bg-light); }
         .side-menu a, .side-menu button { padding: 15px 20px; text-decoration: none; color: #495057; border-bottom: 1px solid #f1f3f5; text-align: right; font-size: 15px; background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: 0.3s; width: 100%; box-sizing: border-box; }
         .side-menu a:hover { background: var(--bg-light); color: var(--main); }
-        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; z-index: 9998; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; z-index: 9999; } /* z-index أقل من القائمة */
         .overlay.active { display: block; }
 
         main { padding: 20px; display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
@@ -42,7 +41,7 @@
 </head>
 <body>
 
-    <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+    <!-- تم إزالة overlay من هنا ونقله إلى الأسفل لتحسين ترتيب DOM -->
 
     <header>
         <div class="logo-container">
@@ -115,6 +114,9 @@
         </div>
     </main>
 
+    <!-- نقل overlay إلى هنا ليكون بعد القائمة في ترتيب DOM، مع z-index أقل -->
+    <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+
     <script>
         const S_URL = 'https://yboxheficowekfzjatti.supabase.co';
         const S_KEY = 'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS';
@@ -128,16 +130,13 @@
 
         async function init() {
             try {
-                // التحقق من تسجيل الدخول
                 const { data: { user } } = await flamencoClient.auth.getUser();
                 
                 if (!user) {
-                    // إذا لم يكن هناك مستخدم مسجل، توجه إلى صفحة تسجيل الدخول
                     window.location.replace('admin-login.html');
-                    return; // نوقف تنفيذ باقي الدالة
+                    return;
                 }
 
-                // إذا كان هناك مستخدم، نعرض بياناته
                 document.getElementById('user-name').textContent = user.email.split('@')[0];
                 document.getElementById('user-avatar').textContent = user.email[0].toUpperCase();
 
@@ -180,4 +179,4 @@
         document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
-                </html>
+</html>
