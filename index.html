@@ -78,9 +78,11 @@
             </div>
             <nav class="side-menu" id="sideMenu">
                 <div class="side-menu-header"><strong>القائمة الرئيسية</strong><i class="fas fa-times" onclick="toggleMenu()" style="cursor:pointer; color:var(--main)"></i></div>
-                <a href="admin-novels.html"><span><i class="fas fa-book"></i> الروايات</span> <span class="count" id="menu-stories">0</span></a>
-                <a href="admin-users.html"><span><i class="fas fa-users"></i> المستخدمين</span> <span class="count" id="menu-users">0</span></a>
-                <a href="admin-reports.html"><span><i class="fas fa-flag"></i> البلاغات</span> <span class="count" id="menu-reports">0</span></a>
+                <a href="novels.html"><span><i class="fas fa-book"></i> الروايات</span> <span class="count" id="menu-stories">0</span></a>
+                <a href="users.html"><span><i class="fas fa-users"></i> المستخدمين</span> <span class="count" id="menu-users">0</span></a>
+                <a href="reports.html"><span><i class="fas fa-flag"></i> البلاغات</span> <span class="count" id="menu-reports">0</span></a>
+                <a href="admins.html"><span><i class="fas fa-user-shield"></i> فريق العمل</span></a>
+                <a href="support.html"><span><i class="fas fa-headset"></i> الدعم الفني</span></a>
                 <button onclick="handleLogout()" style="color: var(--danger);"><i class="fas fa-sign-out-alt"></i> خروج آمن</button>
             </nav>
         </header>
@@ -88,23 +90,34 @@
         <div class="quick-stats">
             <div class="stat-item"><div>الروايات</div><div id="stat-stories" class="stat-value">0</div></div>
             <div class="stat-item"><div>المستخدمين</div><div id="stat-users" class="stat-value">0</div></div>
+            <div class="stat-item"><div>البلاغات</div><div id="stat-reports" class="stat-value">0</div></div>
         </div>
 
         <main id="content">
             <div class="card">
-                <h3>الروايات <span id="c_stories" class="count">0</span></h3>
-                <p>إدارة الفصول والمحتوى.</p>
-                <a href="admin-novels.html" class="btn">إدارة</a>
+                <h3>إدارة الروايات <span id="c_stories" class="count">0</span></h3>
+                <p>مراجعة الفصول والمحتوى المنشور.</p>
+                <a href="novels.html" class="btn">دخول</a>
             </div>
             <div class="card">
-                <h3>المستخدمين <span id="c_users" class="count">0</span></h3>
-                <p>تعديل الجواهر والحظر.</p>
-                <a href="admin-users.html" class="btn">إدارة</a>
+                <h3>إدارة المستخدمين <span id="c_users" class="count">0</span></h3>
+                <p>إدارة الحظر، الجواهر، والملفات الشخصية.</p>
+                <a href="users.html" class="btn">دخول</a>
             </div>
             <div class="card">
-                <h3>نظام الإشعارات</h3>
-                <p>إرسال تنبيهات عامة.</p>
-                <a href="admin-notifications.html" class="btn" style="background: var(--info);">إرسال</a>
+                <h3>البلاغات <span id="c_reports" class="count">0</span></h3>
+                <p>معالجة الشكاوى وبلاغات المحتوى.</p>
+                <a href="reports.html" class="btn" style="background: var(--danger);">مراجعة</a>
+            </div>
+            <div class="card">
+                <h3>فريق العمل</h3>
+                <p>إضافة مسؤولين وتعيين الصلاحيات.</p>
+                <a href="admins.html" class="btn">إدارة الفريق</a>
+            </div>
+            <div class="card">
+                <h3>الدعم الفني</h3>
+                <p>الرد على رسائل المستخدمين.</p>
+                <a href="support.html" class="btn" style="background: var(--info);">فتح البريد</a>
             </div>
         </main>
     </div>
@@ -143,29 +156,35 @@
 
         async function verifyAdmin(user) {
             const { data } = await flamencoClient.from('admin_permissions').select('role').eq('user_id', user.id).single();
-            if (data?.role === 'admin' || data?.role === 'super_admin' || data?.role === 'moderator') {
+            if (data?.role) {
                 document.getElementById('loginSection').classList.add('hidden');
                 document.getElementById('dashboardWrapper').classList.remove('hidden');
                 document.getElementById('user-avatar').textContent = user.email[0].toUpperCase();
                 fetchStats();
             } else {
-                alert("⛔ صلاحيات غير كافية");
+                alert("⛔ هذا الحساب لا يملك صلاحيات إدارية");
                 await flamencoClient.auth.signOut();
                 location.reload();
             }
         }
 
         async function fetchStats() {
-            const tables = {
-                stories: ['c_stories', 'stat-stories', 'menu-stories'],
-                profiles: ['c_users', 'stat-users', 'menu-users'],
-                reports: ['c_reports', 'stat-reports', 'menu-reports']
-            };
-            for (const [table, ids] of Object.entries(tables)) {
+            const config = [
+                { table: 'stories', ids: ['c_stories', 'stat-stories', 'menu-stories'] },
+                { table: 'profiles', ids: ['c_users', 'stat-users', 'menu-users'] },
+                { table: 'reports', ids: ['c_reports', 'stat-reports', 'menu-reports'] }
+            ];
+
+            for (const item of config) {
                 try {
-                    const { count } = await flamencoClient.from(table).select('*', { count: 'exact', head: true });
-                    ids.forEach(id => { if(document.getElementById(id)) document.getElementById(id).innerText = count || 0; });
-                } catch(e) {}
+                    const { count, error } = await flamencoClient.from(item.table).select('*', { count: 'exact', head: true });
+                    if (!error) {
+                        item.ids.forEach(id => {
+                            const el = document.getElementById(id);
+                            if (el) el.innerText = count || 0;
+                        });
+                    }
+                } catch(e) { console.error(e); }
             }
         }
 
