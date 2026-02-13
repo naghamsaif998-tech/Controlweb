@@ -8,173 +8,121 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
         :root { --main: #d63384; --bg: #121212; --card: #1e1e1e; --text: #eee; --danger: #dc3545; --success: #28a745; --warning: #ffc107; }
-        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: var(--text); padding: 15px; direction: rtl; margin: 0; }
-        
-        .back-btn { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 15px; color: var(--main); text-decoration: none; font-weight: bold; }
-        .header { background: linear-gradient(135deg, var(--main), #9d174d); padding: 20px; text-align: center; border-radius: 15px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(214, 51, 132, 0.3); }
-        
-        .search-container { position: relative; margin-bottom: 15px; }
-        .search-input { width: 100%; padding: 14px 45px 14px 15px; border-radius: 10px; border: 1px solid #333; background: #222; color: #fff; font-size: 16px; outline: none; }
-        
-        .user-card { background: var(--card); border-radius: 12px; padding: 15px; margin-bottom: 10px; border-right: 5px solid var(--main); transition: 0.3s; }
-        .user-card.banned-mode { border-right-color: var(--warning); background: #2a2410; }
-        
-        .user-header { display: flex; justify-content: space-between; align-items: center; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 15px; direction: rtl; margin: 0; }
+        .header { background: linear-gradient(135deg, var(--main), #9d174d); padding: 20px; text-align: center; border-radius: 15px; margin-bottom: 20px; }
+        .user-card { background: var(--card); border-radius: 12px; padding: 15px; margin-bottom: 12px; border-right: 5px solid var(--main); transition: 0.3s; position: relative; }
+        .user-card.banned-active { border-right-color: var(--warning); background: #2a2410; }
         .user-info { display: flex; align-items: center; gap: 12px; }
-        .user-avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; background: #333; border: 1px solid #444; }
-        
-        .gem-badge { background: #333; padding: 4px 10px; border-radius: 20px; font-size: 12px; color: #ffd700; border: 1px solid #555; display: flex; align-items: center; gap: 5px; }
-        
-        .actions { display: flex; gap: 8px; margin-top: 15px; }
-        .btn { flex: 1; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 13px; }
+        .user-avatar { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; background: #333; border: 2px solid #444; }
+        .gem-badge { background: #333; padding: 5px 12px; border-radius: 20px; font-size: 13px; color: #ffd700; border: 1px solid #555; display: flex; align-items: center; gap: 5px; }
+        .actions { display: flex; gap: 10px; margin-top: 15px; }
+        .btn { flex: 1; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; transition: 0.2s; }
         .btn-delete { background: var(--danger); flex: 0.4; }
-        
-        .ban-status { font-size: 11px; color: var(--warning); margin-top: 5px; display: block; }
+        .btn:active { transform: scale(0.96); }
+        .ban-meta { font-size: 11px; color: var(--warning); margin-top: 8px; background: rgba(255, 193, 7, 0.1); padding: 5px; border-radius: 5px; border: 1px dashed var(--warning); }
     </style>
 </head>
 <body>
 
-    <a href="index.html" class="back-btn"><i class="fas fa-arrow-right"></i> العودة للرئيسية</a>
-
     <div class="header">
-        <h2><i class="fas fa-users-cog"></i> إدارة المستخدمين</h2>
+        <h2><i class="fas fa-user-shield"></i> لوحة الرقابة | فلامنكو</h2>
     </div>
 
-    <div class="search-container">
-        <i class="fas fa-search" style="position: absolute; right: 15px; top: 18px; color: #888;"></i>
-        <input type="text" class="search-input" placeholder="ابحث باسم المستخدم أو البريد..." oninput="filterUsers(this.value)">
-    </div>
-
-    <div id="list">
-        <p style="text-align:center; padding:20px;">جاري تحميل البيانات...</p>
-    </div>
+    <div id="list"><p style="text-align:center;">جاري فحص قاعدة البيانات...</p></div>
 
     <script>
         const S_URL = 'https://yboxheficowekfzjatti.supabase.co';
         const S_KEY = 'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS';
         const _sb = window.supabase.createClient(S_URL, S_KEY);
-        let usersCache = [];
 
         async function loadData() {
             const { data, error } = await _sb.from('profiles').select('*').order('created_at', { ascending: false });
-            if (error) {
-                console.error("خطأ في جلب البيانات:", error);
-                return;
-            }
-            usersCache = data || [];
-            render(usersCache);
+            if (!error) render(data);
         }
 
         function render(users) {
             const listDiv = document.getElementById('list');
             const now = new Date();
 
-            if (users.length === 0) {
-                listDiv.innerHTML = '<p style="text-align:center; color:#888;">لا يوجد مستخدمين حالياً</p>';
-                return;
-            }
-
             listDiv.innerHTML = users.map(u => {
-                // منطق فحص الحظر: هل is_banned صحيحة وتاريخ الحظر لم ينتهِ بعد؟
                 const banExpiry = u.banned_until ? new Date(u.banned_until) : null;
-                const isCurrentlyBanned = u.is_banned === true && banExpiry && banExpiry > now;
-                
+                const isCurrentlyBanned = u.is_banned && banExpiry && banExpiry > now;
                 const avatar = u.photo_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
 
                 return `
-                <div class="user-card ${isCurrentlyBanned ? 'banned-mode' : ''}" id="card-${u.id}">
-                    <div class="user-header">
+                <div class="user-card ${isCurrentlyBanned ? 'banned-active' : ''}" id="u-${u.id}">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                         <div class="user-info">
                             <img src="${avatar}" class="user-avatar" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
                             <div>
-                                <div style="font-weight:bold; font-size:16px;">${u.username || 'مستخدم جديد'}</div>
-                                <div style="font-size:12px; color:#888;">${u.email || 'بدون إيميل'}</div>
+                                <div style="font-weight:bold;">${u.username || 'عضو جديد'}</div>
+                                <div style="font-size:12px; color:#888;">${u.email || 'لا يوجد بريد'}</div>
                             </div>
                         </div>
-                        <div class="gem-badge">
-                            <i class="fas fa-gem"></i> ${u.gems || 10}
-                        </div>
+                        <div class="gem-badge"><i class="fas fa-gem"></i> ${u.gems || 10}</div>
                     </div>
-                    
-                    ${isCurrentlyBanned ? `<span class="ban-status"><i class="fas fa-clock"></i> محظور حتى: ${banExpiry.toLocaleDateString('ar-EG')}</span>` : ''}
+
+                    ${isCurrentlyBanned ? `
+                        <div class="ban-meta">
+                            <div><i class="fas fa-calendar-alt"></i> ينتهي في: ${banExpiry.toLocaleDateString('ar-EG')}</div>
+                            <div><i class="fas fa-comment-dots"></i> السبب: ${u.ban_reason || 'غير محدد'}</div>
+                        </div>
+                    ` : ''}
 
                     <div class="actions">
                         <button class="btn" 
-                                onclick="toggleBan('${u.id}', ${isCurrentlyBanned})"
+                                onclick="handleBanAction('${u.id}', ${isCurrentlyBanned})"
                                 style="background: ${isCurrentlyBanned ? 'var(--success)' : 'var(--warning)'}; color: ${isCurrentlyBanned ? '#fff' : '#000'}">
-                            <i class="fas ${isCurrentlyBanned ? 'fa-user-check' : 'fa-user-slash'}"></i>
+                            <i class="fas ${isCurrentlyBanned ? 'fa-unlock' : 'fa-user-slash'}"></i>
                             ${isCurrentlyBanned ? 'فك الحظر الآن' : 'حظر 10 أيام'}
                         </button>
-
-                        <button class="btn btn-delete" onclick="deleteUser('${u.id}')">
-                            <i class="fas fa-trash-alt"></i> حذف نهائي
+                        <button class="btn btn-delete" onclick="handleDelete('${u.id}')">
+                            <i class="fas fa-trash-alt"></i> مسح نهائي
                         </button>
                     </div>
-                </div>
-            `}).join('');
+                </div>`;
+            }).join('');
         }
 
-        // دالة الحظر وفك الحظر الموحدة
-        window.toggleBan = async (id, isCurrentlyBanned) => {
+        window.handleBanAction = async (id, isBanned) => {
             let updateData = {};
-            
-            if (!isCurrentlyBanned) {
-                // تنفيذ الحظر لمدة 10 أيام
+            if (!isBanned) {
+                const reason = prompt("اكتب سبب الحظر ليظهر للمستخدم:");
+                if (reason === null) return; // إلغاء العملية
+
                 const expiry = new Date();
                 expiry.setDate(expiry.getDate() + 10);
-                updateData = { is_banned: true, banned_until: expiry.toISOString() };
-                if (!confirm("هل تريد حظر هذا المستخدم لمدة 10 أيام؟")) return;
+                updateData = { 
+                    is_banned: true, 
+                    banned_until: expiry.toISOString(),
+                    ban_reason: reason || "مخالفة سياسة التطبيق"
+                };
             } else {
-                // فك الحظر فوراً
-                updateData = { is_banned: false, banned_until: null };
-                if (!confirm("هل تريد فك الحظر عن هذا المستخدم الآن؟")) return;
+                if (!confirm("هل تود فك الحظر وإعادة الصلاحيات لهذا المستخدم؟")) return;
+                updateData = { is_banned: false, banned_until: null, ban_reason: null };
             }
 
             const { error } = await _sb.from('profiles').update(updateData).eq('id', id);
+            if (!error) await loadData();
+            else alert("فشل الإجراء، تأكد من وجود عمود ban_reason في SQL");
+        };
 
+        window.handleDelete = async (id) => {
+            if (!confirm("🚨 سيتم حذف حساب المستخدم وكل رواياته فوراً وبشكل نهائي. هل أنت متأكد؟")) return;
+            
+            // حذف الروايات ثم الملف الشخصي
+            await _sb.from('stories').delete().eq('author_id', id);
+            const { error } = await _sb.from('profiles').delete().eq('id', id);
+            
             if (!error) {
-                await loadData(); // إعادة التحميل لتغيير شكل الزر فوراً
-            } else {
-                alert("خطأ: تأكد من إضافة عمود banned_until في قاعدة البيانات");
-                console.error(error);
+                document.getElementById(`u-${id}`).style.display = 'none';
+                await loadData();
             }
-        };
-
-        // دالة الحذف النهائي الشامل
-        window.deleteUser = async (id) => {
-            if (!confirm("🚨 تحذير: سيتم حذف المستخدم وجميع رواياته نهائياً من النظام. هل أنت متأكد؟")) return;
-
-            try {
-                // 1. حذف الروايات المرتبطة أولاً
-                await _sb.from('stories').delete().eq('author_id', id);
-                
-                // 2. حذف الملف الشخصي
-                const { error } = await _sb.from('profiles').delete().eq('id', id);
-
-                if (!error) {
-                    // إخفاء الكارت فوراً من الواجهة قبل إعادة التحميل لسرعة الاستجابة
-                    const card = document.getElementById(`card-${id}`);
-                    if (card) card.style.display = 'none';
-                    
-                    await loadData(); // تحديث القائمة بالكامل
-                } else {
-                    throw error;
-                }
-            } catch (err) {
-                alert("فشل الحذف: " + err.message);
-            }
-        };
-
-        window.filterUsers = (val) => {
-            const term = val.toLowerCase();
-            const filtered = usersCache.filter(u => 
-                (u.username?.toLowerCase().includes(term)) || (u.email?.toLowerCase().includes(term))
-            );
-            render(filtered);
         };
 
         window.onload = loadData;
     </script>
 </body>
 </html>
+
