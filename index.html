@@ -14,7 +14,6 @@
         .logo { width: 40px; height: 40px; background: linear-gradient(135deg, var(--main), var(--secondary)); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px; }
         .site-title { color: var(--main); font-size: 22px; font-weight: bold; margin: 0; }
         .menu-icon { font-size: 22px; color: var(--main); cursor: pointer; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px; background: white; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; }
-        
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; z-index: 9998; }
         .overlay.active { display: block; }
         .side-menu { position: fixed; top: 0; right: -300px; width: 280px; height: 100%; background: white; box-shadow: -5px 0 15px rgba(0,0,0,0.2); transition: 0.3s ease-in-out; display: flex; flex-direction: column; z-index: 9999; }
@@ -22,7 +21,6 @@
         .side-menu-header { padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: var(--bg-light); }
         .side-menu a, .side-menu button { padding: 15px 20px; text-decoration: none; color: #495057; border-bottom: 1px solid #f1f3f5; text-align: right; font-size: 15px; background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: 0.3s; width: 100%; box-sizing: border-box; }
         .side-menu a:hover { background: var(--bg-light); color: var(--main); }
-        
         main { padding: 20px; display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
         .card { background: #fff; padding: 25px; border-radius: 15px; border-right: 5px solid var(--main); box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e9ecef; transition: 0.3s; }
         .count { background: var(--bg-light); color: var(--main); padding: 4px 10px; border-radius: 20px; font-size: 13px; font-weight: bold; }
@@ -61,7 +59,7 @@
             <div><h1 class="site-title">فلامنكو</h1><p class="site-subtitle">نظام الإدارة</p></div>
         </div>
         <div class="user-info">
-            <div id="user-name" style="font-size: 14px; color: #666;">زائر</div>
+            <div id="user-name" style="font-size: 14px; color: #666;">جاري التحقق...</div>
             <div class="user-avatar" id="user-avatar">?</div>
         </div>
         <div class="menu-container">
@@ -77,7 +75,7 @@
 
     <div id="loading">
         <div class="spinner"></div>
-        <p>جاري تحديث البيانات...</p>
+        <p id="loading-text">جاري التحقق من الصلاحيات...</p>
     </div>
 
     <main id="content" style="display:none;">
@@ -116,7 +114,6 @@
     <script>
         const S_URL = 'https://yboxheficowekfzjatti.supabase.co';
         const S_KEY = 'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS';
-        
         const flamencoClient = window.supabase.createClient(S_URL, S_KEY);
 
         function toggleMenu() {
@@ -128,19 +125,42 @@
 
         async function init() {
             try {
-                const { data: { user } } = await flamencoClient.auth.getUser();
-                if (user) {
-                    document.getElementById('user-name').textContent = user.email.split('@')[0];
-                    document.getElementById('user-avatar').textContent = user.email[0].toUpperCase();
+                // 1. التأكد من تسجيل الدخول
+                const { data: { session } } = await flamencoClient.auth.getSession();
+                
+                if (!session) {
+                    window.location.href = 'admin-login.html';
+                    return;
                 }
+
+                const user = session.user;
+
+                // 2. التحقق من الرتبة (Admin) من جدول profiles
+                const { data: profile, error } = await flamencoClient
+                    .from('profiles')
+                    .select('role')
+                    .eq('id', user.id)
+                    .single();
+
+                if (error || !profile || profile.role !== 'admin') {
+                    alert("عذراً، ليس لديك صلاحيات المسؤول.");
+                    await flamencoClient.auth.signOut();
+                    window.location.href = 'admin-login.html';
+                    return;
+                }
+
+                // تحديث بيانات الهيدر
+                document.getElementById('user-name').textContent = user.email.split('@')[0];
+                document.getElementById('user-avatar').textContent = user.email[0].toUpperCase();
 
                 await fetchStats();
 
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('content').style.display = 'grid';
+
             } catch (err) {
-                console.log("Init error:", err);
-                document.getElementById('loading').innerHTML = "حدث خطأ أثناء المزامنة";
+                console.error("Init error:", err);
+                document.getElementById('loading-text').textContent = "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً.";
             }
         }
 
@@ -163,17 +183,16 @@
             }
         }
 
-        // تحسين وظيفة الخروج لتكون أكثر استقراراً
         async function handleLogout() {
-            if (confirm("هل أنت متأكد من تسجيل الخروج؟")) {
+            if (confirm("هل تريد الخروج حقاً؟")) {
                 try {
-                    await flamencoClient.auth.signOut();
-                    // تحويل المستخدم لصفحة تسجيل الدخول أو تحديث الصفحة
-                    window.location.href = 'admin-login.html'; 
-                } catch (error) {
-                    console.error("Logout failed:", error);
-                    // في حال فشل الاتصال، نقوم بتحديث الصفحة على الأقل
-                    location.reload();
+                    const { error } = await flamencoClient.auth.signOut();
+                    if (error) throw error;
+                    window.location.replace('admin-login.html');
+                } catch (err) {
+                    console.error("Logout error:", err);
+                    // في حال فشل تسجيل الخروج برمجياً، يتم التحويل القسري
+                    window.location.href = 'admin-login.html';
                 }
             }
         }
