@@ -41,16 +41,44 @@
     const SB_KEY = "sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS";
     const _sb = supabase.createClient(SB_URL, SB_KEY);
 
-    async function loadReports() {
-        const { data: reports, error } = await _sb
-            .from('reports')
-            .select(`*, reporter:reporter_id(username)`)
-            .order('created_at', { ascending: false });
+    // استبدلي جزء جلب البيانات في الكود الخاص بكِ بهذا الجزء المطور
+async function loadReports() {
+    const { data: reports, error } = await _sb
+        .from('reports')
+        .select(`*, reporter:reporter_id(username)`)
+        .order('created_at', { ascending: false });
 
-        if (error) {
-            console.error(error);
-            return;
+    if (error) return;
+
+    const enhanced = await Promise.all(reports.map(async (r) => {
+        // 1. جلب اسم المُبلغ ضده
+        let reportedName = "غير معروف";
+        if (r.reported_user_) {
+            const { data: user } = await _sb.from('profiles').select('username').eq('id', r.reported_user_.trim()).maybeSingle();
+            if (user) reportedName = user.username;
         }
+
+        // 2. جلب اسم الرواية (تحويل النص إلى رقم للمطابقة مع جدول stories)
+        let objectName = "غير محدد";
+        if (r.comment_id) {
+            objectName = "تعليق";
+        } else if (r.details) {
+            // تحويل رقم الرواية من نص إلى رقم صحيح
+            const storyIdNum = parseInt(r.details.trim()); 
+            if (!isNaN(storyIdNum)) {
+                const { data: story } = await _sb.from('stories').select('title').eq('id', storyIdNum).maybeSingle();
+                if (story) objectName = story.title; // هنا سيظهر اسم الرواية
+                else objectName = "رواية (رقم: " + r.details + ")";
+            } else {
+                objectName = r.details;
+            }
+        }
+
+        return { ...r, reportedName, objectName };
+    }));
+
+    render(enhanced);
+}
 
         const enhanced = await Promise.all(reports.map(async (r) => {
             // 1. جلب اسم المستخدم المُبلغ ضده (تنظيف الـ ID من المسافات)
@@ -168,3 +196,4 @@
 </script>
 </body>
 </html>
+
