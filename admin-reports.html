@@ -49,39 +49,35 @@
                 let reportedName = "غير معروف";
                 let storyTitle = "غير محدد";
                 let reporterName = "مجهول";
-                let reportedUserId = null;
+                let targetIdForBan = null;
 
-                // 1. جلب اسم المُبلغ
+                // 1. جلب اسم المُبلغ (من جدول profiles باستخدام reporter_id)
                 if (r.reporter_id) {
                     const { data: p1 } = await _sb.from('profiles').select('username').eq('id', r.reporter_id).maybeSingle();
                     if (p1) reporterName = p1.username;
                 }
 
-                // 2. جلب اسم الرواية وبيانات الكاتب باستخدام عمود details
+                // 2. جلب بيانات الرواية (من جدول stories باستخدام عمود details الذي يحتوي على id الرواية)
                 if (r.details) {
                     const sId = parseInt(r.details.trim());
                     if (!isNaN(sId)) {
                         const { data: story } = await _sb.from('stories').select('title, author_id').eq('id', sId).maybeSingle();
                         if (story) {
-                            storyTitle = story.title;
-                            reportedUserId = story.author_id; // تحديد الشخص المبلّغ عنه (الكاتب)
-                        } else {
-                            storyTitle = "رواية برقم: " + sId;
+                            storyTitle = story.title; // هنا يظهر اسم الرواية
+                            targetIdForBan = story.author_id; // تحديد الكاتب الفعلي لحظره
                         }
-                    } else {
-                        storyTitle = r.details;
                     }
                 }
 
-                // 3. جلب اسم المُبلغ عليه (المخالف) من جدول البروفايلات
-                if (reportedUserId) {
-                    const { data: p2 } = await _sb.from('profiles').select('username').eq('id', reportedUserId).maybeSingle();
-                    if (p2) reportedName = p2.username;
+                // 3. جلب اسم الشخص المبلّغ عنه (الكاتب)
+                if (targetIdForBan) {
+                    const { data: p2 } = await _sb.from('profiles').select('username').eq('id', targetIdForBan).maybeSingle();
+                    if (p2) reportedName = p2.username; // هنا يظهر اسم الشخص المبلّغ عنه
                 } else if (r.reported_user) {
-                    reportedName = r.reported_user; // استخدام النص الموجود إذا لم يتوفر ID
+                    reportedName = r.reported_user;
                 }
 
-                return { ...r, reportedName, storyTitle, reporterName, reportedUserId };
+                return { ...r, reportedName, storyTitle, reporterName, targetIdForBan };
             }));
 
             render(finalData);
@@ -106,7 +102,7 @@
                 <div style="font-weight:bold; font-size:18px;">${r.reason}</div>
                 
                 <div class="content-box">
-                    <small>الشيء المتبلغ عنه:</small>
+                    <small>اسم الرواية:</small>
                     <span class="content-name">${r.storyTitle}</span>
                 </div>
 
@@ -117,7 +113,7 @@
 
                 <div class="actions">
                     <button class="btn btn-delete" onclick="handleDelete('${r.id}', '${r.details}')">حذف المحتوى</button>
-                    <button class="btn btn-ban" onclick="handleBan('${r.reportedUserId}', '${r.reportedName}')">حظر 10 أيام</button>
+                    <button class="btn btn-ban" onclick="handleBan('${r.targetIdForBan}', '${r.reportedName}')">حظر 10 أيام</button>
                     <button class="btn btn-resolve" onclick="handleResolve('${r.id}')">إغلاق البلاغ</button>
                 </div>
             </div>
@@ -127,27 +123,18 @@
     async function handleDelete(reportId, storyId) {
         if (!confirm("هل تريد حذف الرواية نهائياً؟")) return;
         const { error } = await _sb.from('stories').delete().eq('id', parseInt(storyId));
-        if (!error) { alert("تم حذف الرواية بنجاح"); handleResolve(reportId); }
-        else { alert("خطأ في الحذف: " + error.message); }
+        if (!error) { alert("تم الحذف"); handleResolve(reportId); }
     }
 
     async function handleBan(uid, name) {
-        if (!uid || uid === "null") return alert("لا يمكن تحديد هوية المستخدم للحظر");
-        if (!confirm(`حظر ${name} لمدة 10 أيام؟`)) return;
-        
+        if (!uid || uid === "null") return alert("لا يمكن تحديد المستخدم لحظره");
+        if (!confirm(`حظر ${name}؟`)) return;
         const expiry = new Date();
         expiry.setDate(expiry.getDate() + 10);
-        
-        const { error } = await _sb.from('profiles')
-            .update({ is_banned: true, banned_until: expiry.toISOString() })
-            .eq('id', uid);
-            
-        if (!error) {
-            alert("تم الحظر بنجاح");
-            loadReports();
-        } else {
-            alert("خطأ في الحظر: " + error.message);
-        }
+        // تحديث حالة الحظر في جدول البروفايلات للمخالف
+        await _sb.from('profiles').update({ is_banned: true, banned_until: expiry.toISOString() }).eq('id', uid);
+        alert("تم حظر المخالف بنجاح");
+        loadReports();
     }
 
     async function handleResolve(id) {
