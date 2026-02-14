@@ -3,57 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>إدارة البلاغات الاحترافية | فلامنكو</title>
+    <title>إدارة البلاغات والمحتوى | فلامنكو</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        :root { --main: #d63384; --bg: #f0f2f5; --card: #ffffff; --danger: #dc3545; --success: #28a745; --warning: #ffc107; }
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; padding: 15px; direction: rtl; }
+        :root { --main: #d63384; --bg: #f4f7f6; --card: #ffffff; --danger: #dc3545; --success: #28a745; --warning: #ffc107; --dark: #212529; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 15px; direction: rtl; }
         
         .header { background: linear-gradient(135deg, var(--main), #9d174d); color: white; padding: 20px; text-align: center; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         
-        .report-card { background: var(--card); padding: 20px; border-radius: 15px; margin-bottom: 15px; border-right: 6px solid #ccc; box-shadow: 0 2px 8px rgba(0,0,0,0.05); position: relative; }
+        .report-card { background: var(--card); padding: 20px; border-radius: 15px; margin-bottom: 15px; border-right: 6px solid #ccc; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .report-card.pending { border-right-color: var(--danger); }
-        .report-card.resolved { border-right-color: var(--success); opacity: 0.8; }
+        .report-card.resolved { border-right-color: var(--success); opacity: 0.7; }
         
-        .type-badge { font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: bold; margin-bottom: 10px; display: inline-block; }
-        .badge-story { background: #e0f2fe; color: #0369a1; }
-        .badge-comment { background: #fef2f2; color: #991b1b; }
+        .badge { font-size: 11px; padding: 4px 12px; border-radius: 20px; font-weight: bold; margin-bottom: 10px; display: inline-block; }
+        .badge-story { background: #fff0f6; color: var(--main); border: 1px solid var(--main); }
+        .badge-comment { background: #e9ecef; color: #495057; border: 1px solid #ced4da; }
 
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; background: #f8f9fa; padding: 12px; border-radius: 10px; font-size: 14px; }
-        .info-item b { color: var(--main); display: block; font-size: 11px; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; background: #f8f9fa; padding: 12px; border-radius: 10px; }
+        .user-link { font-weight: bold; color: var(--dark); text-decoration: none; }
+        .user-link i { color: var(--main); margin-left: 5px; }
 
-        .reason-text { font-size: 16px; font-weight: bold; color: #333; margin: 5px 0; }
-        .details-text { font-size: 13px; color: #666; background: #fffbe6; padding: 8px; border-radius: 5px; border: 1px dashed #ffe58f; }
+        .reason-box { font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #d63384; }
+        .details-box { font-size: 13px; color: #555; background: #fffbe6; padding: 10px; border-radius: 8px; border: 1px dashed #ffe58f; margin-top: 5px; }
 
-        .actions { display: flex; gap: 8px; margin-top: 15px; flex-wrap: wrap; }
-        .btn { flex: 1; padding: 10px; border: none; border-radius: 8px; cursor: pointer; color: white; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 13px; transition: 0.2s; }
-        .btn-ban { background: #000; }
+        .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 15px; }
+        .btn { padding: 12px; border: none; border-radius: 8px; cursor: pointer; color: white; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; transition: 0.2s; }
+        
+        .btn-delete-content { background: var(--danger); grid-column: span 2; }
+        .btn-ban-user { background: var(--dark); }
         .btn-resolve { background: var(--success); }
-        .btn-delete { background: var(--danger); }
-        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
-
-        #loading { text-align: center; padding: 30px; color: var(--main); }
+        .btn:hover { filter: brightness(1.1); }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1><i class="fas fa-shield-alt"></i> رقابة البلاغات</h1>
+        <h1><i class="fas fa-gavel"></i> محكمة الرقابة</h1>
     </div>
 
-    <div id="loading"><i class="fas fa-spinner fa-spin fa-2x"></i><p>جاري تحميل البلاغات الجديدة...</p></div>
+    <div id="loading" style="text-align:center; padding:50px;"><i class="fas fa-sync fa-spin fa-2x"></i></div>
     <div id="reports-list"></div>
 
     <script>
-        // إعدادات Supabase من صورك السابقة
         const SB_URL = "https://yboxheficowekfzjatti.supabase.co";
         const SB_KEY = "sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS";
         const _sb = supabase.createClient(SB_URL, SB_KEY);
 
-        async function fetchReports() {
-            // جلب البلاغات مع ربط بيانات المُبلغ والمُبلغ ضده
-            // ملاحظة: استخدمنا 'reported_user_' كما يظهر في صور قاعدة بياناتك
+        async function loadReports() {
             const { data, error } = await _sb
                 .from('reports')
                 .select(`
@@ -63,94 +60,101 @@
                 `)
                 .order('created_at', { ascending: false });
 
-            if (error) {
-                console.error("خطأ:", error);
-                document.getElementById('reports-list').innerHTML = "<p style='text-align:center; color:red;'>فشل تحميل البيانات. تأكد من إعدادات PostgREST Schema.</p>";
-                return;
-            }
-            renderReports(data);
+            if (error) return console.error(error);
+            render(data);
             document.getElementById('loading').style.display = 'none';
         }
 
-        function renderReports(reports) {
-            const list = document.getElementById('reports-list');
-            if (!reports.length) { list.innerHTML = '<p style="text-align:center;">لا توجد بلاغات حالياً.</p>'; return; }
-            
-            list.innerHTML = reports.map(r => {
-                const isComment = r.comment_id !== null;
-                const typeLabel = isComment ? "بلاغ عن تعليق" : "بلاغ عن رواية";
-                const typeClass = isComment ? "badge-comment" : "badge-story";
+        function render(reports) {
+            const container = document.getElementById('reports-list');
+            if (!reports.length) { container.innerHTML = '<p style="text-align:center;">لا بلاغات جديدة.</p>'; return; }
 
+            container.innerHTML = reports.map(r => {
+                const isComment = r.comment_id !== null;
                 return `
                 <div class="report-card ${r.status}">
-                    <span class="type-badge ${typeClass}"><i class="fas ${isComment ? 'fa-comment' : 'fa-book'}"></i> ${typeLabel}</span>
-                    <div class="reason-text">${r.reason}</div>
+                    <span class="badge ${isComment ? 'badge-comment' : 'badge-story'}">
+                        <i class="fas ${isComment ? 'fa-comment' : 'fa-book'}"></i> ${isComment ? 'بلاغ عن تعليق' : 'بلاغ عن رواية'}
+                    </span>
+
+                    <div class="reason-box">${r.reason}</div>
                     
                     <div class="info-grid">
-                        <div class="info-item"><b>المُبلِغ:</b> ${r.reporter?.username || 'مستخدم مجهول'}</div>
-                        <div class="info-item"><b>المُبلغ ضده:</b> ${r.reported?.username || 'غير متوفر'}</div>
+                        <div class="info-item"><small>المُبلِغ:</small><br><b>${r.reporter?.username || 'مجهول'}</b></div>
+                        <div class="info-item"><small>المُخالف:</small><br><b>${r.reported?.username || 'غير متوفر'}</b></div>
                     </div>
 
-                    ${r.details ? `<div class="details-text"><b>التفاصيل:</b> ${r.details}</div>` : ''}
-                    
-                    <div style="font-size:11px; color:#888; margin-top:10px;">التاريخ: ${new Date(r.created_at).toLocaleString('ar-EG')}</div>
+                    ${r.details ? `<div class="details-box"><b>محتوى البلاغ:</b> ${r.details}</div>` : ''}
 
                     <div class="actions">
-                        <button class="btn btn-ban" onclick="handleQuickBan('${r.reported?.id}', '${r.reported?.username}')">
-                            <i class="fas fa-user-slash"></i> حظر المُخالف
+                        <button class="btn btn-delete-content" onclick="deleteViolatingContent('${r.id}', '${r.comment_id}', '${r.details}')">
+                            <i class="fas fa-eraser"></i> حذف (التعليق/الرواية) المخالفة
                         </button>
 
-                        <button class="btn btn-resolve" onclick="updateStatus('${r.id}', 'resolved')">
-                            <i class="fas fa-check"></i> حل
+                        <button class="btn btn-ban-user" onclick="banViolator('${r.reported?.id}', '${r.reported?.username}')">
+                            <i class="fas fa-user-slash"></i> حظر المُخالف 10 أيام
                         </button>
 
-                        <button class="btn btn-delete" onclick="deleteReport('${r.id}')">
-                            <i class="fas fa-trash"></i> مسح
+                        <button class="btn btn-resolve" onclick="closeReport('${r.id}')">
+                            <i class="fas fa-check"></i> تم التعامل
                         </button>
                     </div>
-                </div>
-                `;
+                </div>`;
             }).join('');
         }
 
-        // وظيفة الحظر السريع (10 أيام)
-        async function handleQuickBan(userId, username) {
-            if (!userId || userId === 'undefined') return alert("تعذر العثور على هوية المستخدم");
-            
-            const reason = prompt(`أدخل سبب حظر ${username}:`, "مخالفة سياسة المحتوى");
-            if (reason === null) return;
+        // 1. وظيفة حذف المحتوى المخالف (رواية أو تعليق)
+        async function deleteViolatingContent(reportId, commentId, details) {
+            const type = (commentId !== "null" && commentId !== "") ? "تعليق" : "رواية";
+            if (!confirm(`هل أنت متأكد من حذف هذه الـ ${type} نهائياً؟`)) return;
+
+            let error;
+            if (type === "تعليق") {
+                const res = await _sb.from('comments').delete().eq('id', commentId);
+                error = res.error;
+            } else {
+                // بافتراض أن الـ details تحتوي على ID الرواية أو يتم جلبها من العمود المخصص
+                const res = await _sb.from('stories').delete().eq('id', details); 
+                error = res.error;
+            }
+
+            if (!error) {
+                alert(`تم حذف الـ ${type} بنجاح.`);
+                // اختيارياً: إغلاق البلاغ تلقائياً بعد الحذف
+                await closeReport(reportId);
+            } else {
+                alert("خطأ: تعذر الحذف. تأكد من صحة الـ ID.");
+            }
+        }
+
+        // 2. وظيفة حظر المستخدم المخالف
+        async function banViolator(userId, username) {
+            if (!userId || userId === 'undefined') return alert("هوية المستخدم غير متوفرة");
+            if (!confirm(`حظر ${username} لمدة 10 أيام؟`)) return;
 
             const expiry = new Date();
             expiry.setDate(expiry.getDate() + 10);
 
-            // تحديث حالة المستخدم في جدول profiles
             const { error } = await _sb.from('profiles').update({
                 is_banned: true,
                 banned_until: expiry.toISOString(),
-                ban_reason: reason
+                ban_reason: "مخالفة سياسة النشر (بلاغ إدارة)"
             }).eq('id', userId);
 
             if (!error) {
-                alert(`تم حظر ${username} لمدة 10 أيام بنجاح`);
-                fetchReports();
-            } else {
-                alert("حدث خطأ أثناء محاولة الحظر");
+                alert(`تم حظر ${username} وتجميد حسابه.`);
+                loadReports();
             }
         }
 
-        async function updateStatus(id, status) {
-            await _sb.from('reports').update({ status }).eq('id', id);
-            fetchReports();
+        // 3. إغلاق البلاغ
+        async function closeReport(id) {
+            await _sb.from('reports').update({ status: 'resolved' }).eq('id', id);
+            loadReports();
         }
 
-        async function deleteReport(id) {
-            if(confirm("حذف سجل البلاغ من القائمة؟")) {
-                await _sb.from('reports').delete().eq('id', id);
-                fetchReports();
-            }
-        }
-
-        window.onload = fetchReports;
+        window.onload = loadReports;
     </script>
 </body>
 </html>
+
