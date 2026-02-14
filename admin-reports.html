@@ -37,104 +37,97 @@
 
     async function loadReports() {
         try {
-            // جلب البلاغات الأساسية
             const { data: reports, error } = await _sb
                 .from('reports')
-                .select('*') 
+                .select('*')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
 
-            const finalData = await Promise.all(reports.map(async (r) => {
-                let storyTitle = "غير معروف";
-                let reportedName = "غير معروف";
-                let reporterName = "مستخدم مجهول";
+            const enriched = await Promise.all(reports.map(async (r) => {
+                // البيانات الأساسية
+                let storyTitle = '❌ غير معروف';
+                let reportedName = r.reported_user || '❌ غير معروف';
+                let reporterName = 'مستخدم مجهول';
                 let offenderId = null;
-                let type = "بلاغ";
+                let type = r.comment_id ? 'بلاغ عن تعليق' : 'بلاغ عن رواية';
                 let storyId = null;
-                let commentId = r.comment_id;
 
-                // 1. اسم المبلِّغ
+                // 1. اسم المبلغ
                 if (r.reporter_id) {
-                    const { data: prof } = await _sb.from('profiles').select('username').eq('id', r.reporter_id).maybeSingle();
-                    if (prof) reporterName = prof.username;
+                    const { data: p } = await _sb.from('profiles').select('username').eq('id', r.reporter_id).maybeSingle();
+                    if (p) reporterName = p.username;
                 }
 
-                // 2. تحديد نوع البلاغ وجلب البيانات
-                if (commentId) {
-                    type = "بلاغ عن تعليق";
-                    // جلب التعليق
-                    const { data: comment } = await _sb.from('comments').select('story_id, user_id, username').eq('id', commentId).maybeSingle();
+                // 2. إذا كان بلاغ عن تعليق
+                if (r.comment_id) {
+                    const { data: comment } = await _sb.from('comments').select('story_id, user_id, username').eq('id', r.comment_id).maybeSingle();
                     if (comment) {
                         storyId = comment.story_id;
                         // جلب عنوان الرواية
                         if (storyId) {
                             const { data: story } = await _sb.from('stories').select('title').eq('id', storyId).maybeSingle();
-                            storyTitle = story?.title || "غير معروف (ربما محذوفة)";
+                            storyTitle = story?.title || '❌ محذوفة';
                         }
                         // جلب اسم المخالف (صاحب التعليق)
                         if (comment.user_id) {
-                            const { data: offenderProf } = await _sb.from('profiles').select('username').eq('id', comment.user_id).maybeSingle();
-                            reportedName = offenderProf?.username || comment.username || "غير معروف";
+                            const { data: u } = await _sb.from('profiles').select('username').eq('id', comment.user_id).maybeSingle();
+                            reportedName = u?.username || comment.username || reportedName;
                             offenderId = comment.user_id;
                         } else {
-                            reportedName = comment.username || "غير معروف";
+                            reportedName = comment.username || reportedName;
                         }
                     }
-                } else {
-                    // بلاغ عن رواية (أو أي محتوى آخر)
-                    type = "بلاغ عن رواية";
-                    // محاولة استخراج storyId من details (إذا كان رقماً)
+                } 
+                // 3. إذا كان بلاغ عن رواية (نحاول استخراج storyId من details)
+                else {
                     if (r.details) {
-                        const maybeId = parseInt(r.details);
-                        if (!isNaN(maybeId)) {
-                            storyId = maybeId;
+                        // قد يكون details هو storyId كرقم، أو قد يكون نصاً وصفياً
+                        const possibleId = parseInt(r.details);
+                        if (!isNaN(possibleId)) {
+                            storyId = possibleId;
                             const { data: story } = await _sb.from('stories').select('title, author_id').eq('id', storyId).maybeSingle();
                             if (story) {
                                 storyTitle = story.title;
                                 offenderId = story.author_id;
                                 // جلب اسم المؤلف
                                 if (offenderId) {
-                                    const { data: authorProf } = await _sb.from('profiles').select('username').eq('id', offenderId).maybeSingle();
-                                    reportedName = authorProf?.username || "غير معروف";
+                                    const { data: author } = await _sb.from('profiles').select('username').eq('id', offenderId).maybeSingle();
+                                    reportedName = author?.username || reportedName;
                                 }
                             } else {
-                                storyTitle = "غير معروف (ربما محذوفة)";
+                                storyTitle = '❌ محذوفة';
                             }
                         } else {
-                            // details ليس رقماً - يمكن استخدامه كنص إضافي
-                            storyTitle = r.details || "غير معروف";
+                            // details ليس رقماً -> ربما هو اسم الرواية نفسه
+                            storyTitle = r.details;
                         }
-                    }
-                    // إذا لم نجد reportedName بعد، نستخدم الحقل النصي reported_user
-                    if (reportedName === "غير معروف" && r.reported_user) {
-                        reportedName = r.reported_user;
                     }
                 }
 
-                return { 
-                    ...r, 
-                    storyTitle, 
-                    reportedName, 
-                    reporterName, 
-                    offenderId, 
+                return {
+                    ...r,
+                    storyTitle,
+                    reportedName,
+                    reporterName,
+                    offenderId,
                     type,
                     storyId,
-                    commentId
+                    commentId: r.comment_id
                 };
             }));
 
-            render(finalData);
+            render(enriched);
         } catch (err) {
             console.error(err);
-            document.getElementById('loading').innerHTML = "حدث خطأ في عرض البيانات.";
+            document.getElementById('loading').innerHTML = 'حدث خطأ في تحميل البلاغات.';
         }
     }
 
     function render(reports) {
         const list = document.getElementById('reports-list');
         document.getElementById('loading').style.display = 'none';
-        
+
         if (!reports.length) {
             list.innerHTML = '<p style="text-align:center;">لا توجد بلاغات جديدة.</p>';
             return;
@@ -143,8 +136,8 @@
         list.innerHTML = reports.map(r => `
             <div class="report-card">
                 <span class="badge">${r.type}</span>
-                <div style="font-weight:bold; font-size:18px;">${r.reason}</div>
-                
+                <div style="font-weight:bold; font-size:18px;">${r.reason || 'بدون سبب'}</div>
+
                 <div class="content-box">
                     <small>الرواية المبلَّغ عنها:</small>
                     <span class="content-name">${r.storyTitle}</span>
@@ -156,60 +149,63 @@
                 </div>
 
                 <div class="actions">
-                    <button class="btn btn-delete" onclick="handleDelete('${r.id}', ${r.commentId}, ${r.storyId})">حذف المحتوى</button>
-                    <button class="btn btn-ban" onclick="handleBan('${r.offenderId}', '${r.reportedName}')">حظر 10 أيام</button>
-                    <button class="btn btn-resolve" onclick="handleResolve('${r.id}')">إغلاق البلاغ</button>
+                    <button class="btn btn-delete" onclick="handleDelete('${r.id}', ${r.commentId}, ${r.storyId})">🗑 حذف المحتوى</button>
+                    <button class="btn btn-ban" onclick="handleBan('${r.offenderId}', '${r.reportedName}')">🔨 حظر 10 أيام</button>
+                    <button class="btn btn-resolve" onclick="handleResolve('${r.id}')">✅ إغلاق البلاغ</button>
                 </div>
             </div>
         `).join('');
     }
 
-    // دالة الحذف المعدلة: تحذف التعليق أو الرواية حسب نوع البلاغ
+    // حذف المحتوى (تعليق أو رواية)
     async function handleDelete(reportId, commentId, storyId) {
         if (commentId) {
-            if (!confirm("هل أنت متأكد من حذف هذا التعليق نهائياً؟")) return;
+            if (!confirm('هل تريد حذف هذا التعليق نهائياً؟')) return;
             const { error } = await _sb.from('comments').delete().eq('id', commentId);
             if (!error) {
-                alert("تم حذف التعليق بنجاح");
+                alert('تم حذف التعليق');
                 handleResolve(reportId);
             } else {
-                alert("خطأ في الحذف: " + error.message);
+                alert('خطأ: ' + error.message);
             }
         } else if (storyId && !isNaN(storyId)) {
-            if (!confirm("هل أنت متأكد من حذف هذه الرواية نهائياً؟")) return;
+            if (!confirm('هل تريد حذف هذه الرواية نهائياً؟')) return;
             const { error } = await _sb.from('stories').delete().eq('id', storyId);
             if (!error) {
-                alert("تم حذف الرواية بنجاح");
+                alert('تم حذف الرواية');
                 handleResolve(reportId);
             } else {
-                alert("خطأ في الحذف: " + error.message);
+                alert('خطأ: ' + error.message);
             }
         } else {
-            alert("لا يمكن تحديد المحتوى المراد حذفه.");
+            alert('لا يمكن تحديد المحتوى المراد حذفه.');
         }
     }
 
+    // حظر المستخدم المخالف 10 أيام
     async function handleBan(uid, name) {
-        if (!uid || uid === "null" || uid === "undefined" || uid === "غير معروف") 
-            return alert("لا يمكن تحديد هوية المخالف بدقة للحظر");
-        if (!confirm(`هل تود حظر ${name} لمدة 10 أيام؟`)) return;
-        
+        if (!uid || uid === 'null' || uid === 'undefined') {
+            return alert('لا يمكن تحديد هوية المخالف بدقة.');
+        }
+        if (!confirm(`هل تريد حظر ${name} لمدة 10 أيام؟`)) return;
+
         const expiry = new Date();
         expiry.setDate(expiry.getDate() + 10);
-        
-        const { error } = await _sb.from('profiles').update({ 
-            is_banned: true, 
-            banned_until: expiry.toISOString() 
+
+        const { error } = await _sb.from('profiles').update({
+            is_banned: true,
+            banned_until: expiry.toISOString()
         }).eq('id', uid);
-        
-        if (!error) { 
-            alert("تم حظر المخالف"); 
-            loadReports(); 
+
+        if (!error) {
+            alert('تم حظر المستخدم.');
+            loadReports();
         } else {
-            alert("خطأ في الحظر: " + error.message);
+            alert('خطأ: ' + error.message);
         }
     }
 
+    // إغلاق البلاغ (تحديث الحالة إلى resolved)
     async function handleResolve(id) {
         await _sb.from('reports').update({ status: 'resolved' }).eq('id', id);
         loadReports();
