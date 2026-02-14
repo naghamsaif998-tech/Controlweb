@@ -3,212 +3,148 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة تحكم الرقابة | فلامنكو</title>
+    <title>إدارة الرقابة | فلامنكو</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
         :root { --main: #d63384; --bg: #f8f9fa; --danger: #dc3545; --dark: #1a1a1a; --success: #28a745; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; padding: 15px; direction: rtl; }
-        
-        .header { background: linear-gradient(135deg, var(--main), #9d174d); color: white; padding: 25px; text-align: center; border-radius: 20px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(214, 51, 132, 0.2); }
-        
-        .report-card { background: white; padding: 20px; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #efefef; position: relative; overflow: hidden; }
-        .report-card::before { content: ''; position: absolute; top: 0; right: 0; width: 6px; height: 100%; background: #ccc; }
-        .report-card.pending::before { background: var(--danger); }
-        .report-card.resolved::before { background: var(--success); }
-
+        .header { background: linear-gradient(135deg, var(--main), #9d174d); color: white; padding: 25px; text-align: center; border-radius: 20px; margin-bottom: 25px; }
+        .report-card { background: white; padding: 20px; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #efefef; }
         .badge { padding: 6px 15px; border-radius: 50px; font-size: 11px; font-weight: bold; display: inline-block; margin-bottom: 15px; }
         .badge-story { background: #fff0f6; color: var(--main); border: 1px solid #ffd6e7; }
         .badge-comment { background: #f0f2f5; color: #445568; border: 1px solid #d1d5db; }
-
-        .reason-title { font-size: 18px; font-weight: 800; color: #2d3748; margin-bottom: 10px; }
-        
         .content-box { background: #fff5f8; padding: 15px; border-radius: 15px; border: 1px dashed var(--main); margin: 15px 0; }
-        .content-label { font-size: 12px; color: #888; display: block; margin-bottom: 4px; }
-        .content-name { font-size: 16px; font-weight: bold; color: var(--main); }
-
+        .content-name { font-size: 16px; font-weight: bold; color: var(--main); display: block; }
         .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0; padding-top: 15px; border-top: 1px solid #f0f0f0; }
-        .info-item { text-align: center; }
-        .info-item small { color: #a0aec0; display: block; font-size: 11px; margin-bottom: 3px; }
         .info-item b { font-size: 14px; color: #4a5568; }
-
         .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
-        .btn { flex: 1; padding: 12px; border: none; border-radius: 12px; cursor: pointer; color: white; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; font-size: 13px; }
+        .btn { flex: 1; padding: 12px; border: none; border-radius: 12px; cursor: pointer; color: white; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; }
         .btn-delete { background: var(--danger); width: 100%; flex: none; }
         .btn-resolve { background: var(--success); }
         .btn-ban { background: var(--dark); }
-        .btn:hover { opacity: 0.9; transform: translateY(-2px); }
-        .btn:active { transform: scale(0.98); }
-
-        #loading { text-align: center; padding: 50px; }
-        .spinner { color: var(--main); font-size: 2rem; animation: fa-spin 2s infinite linear; }
+        #loading { text-align: center; padding: 50px; color: var(--main); }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1><i class="fas fa-shield-heart"></i> مركز إدارة البلاغات</h1>
-        <p>مراجعة المحتوى، حذف المخالفات، وحظر المستخدمين</p>
+        <h1>مركز إدارة البلاغات</h1>
     </div>
 
     <div id="loading">
-        <i class="fas fa-circle-notch spinner"></i>
-        <p style="margin-top:10px; color:#666;">جاري جلب البلاغات والأسماء...</p>
+        <i class="fas fa-circle-notch fa-spin fa-2x"></i>
+        <p>جاري جلب البيانات والتحقق من العناوين...</p>
     </div>
 
     <div id="reports-list"></div>
 
     <script>
-        // إعدادات الاتصال بـ Supabase
         const SB_URL = "https://yboxheficowekfzjatti.supabase.co";
         const SB_KEY = "sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS";
         const _sb = supabase.createClient(SB_URL, SB_KEY);
 
         async function loadReports() {
-            // جلب بيانات البلاغات مع اسم المُبلغ
             const { data: reports, error } = await _sb
                 .from('reports')
                 .select(`*, reporter:reporter_id(username)`)
                 .order('created_at', { ascending: false });
 
             if (error) {
-                console.error("Error fetching reports:", error);
-                document.getElementById('loading').innerHTML = "تعذر تحميل البلاغات.";
+                console.error("خطأ في جلب البلاغات:", error);
                 return;
             }
 
-            // تحسين البيانات لجلب اسم المُبلغ ضده واسم الرواية
             const enhancedReports = await Promise.all(reports.map(async (r) => {
-                // 1. جلب اسم المُبلغ ضده من جدول profiles
-                let reportedName = "غير معروف";
+                let reportedUsername = "غير معروف (ID خطأ)";
+                let storyTitle = "رواية غير موجودة";
+
+                // 1. جلب اسم المُبلغ ضده مع تنظيف المعرف (Trim)
                 if (r.reported_user_) {
-                    const { data: user } = await _sb.from('profiles').select('username').eq('id', r.reported_user_.trim()).maybeSingle();
-                    if (user) reportedName = user.username;
+                    const cleanUID = r.reported_user_.trim();
+                    const { data: userData } = await _sb.from('profiles').select('username').eq('id', cleanUID).maybeSingle();
+                    if (userData) reportedUsername = userData.username;
                 }
 
-                // 2. جلب اسم الرواية من جدول stories
-                let objectName = "غير محدد";
+                // 2. جلب اسم الرواية (تحويل النص إلى رقم Integer)
                 if (r.comment_id) {
-                    objectName = "تعليق على محتوى";
+                    storyTitle = "تعليق";
                 } else if (r.details) {
-                    // تحويل المعرف من نص إلى رقم للمطابقة مع id جدول stories
-                    const storyIdNum = parseInt(r.details.trim());
-                    if (!isNaN(storyIdNum)) {
-                        const { data: story } = await _sb.from('stories').select('title').eq('id', storyIdNum).maybeSingle();
-                        if (story) objectName = story.title; // عرض اسم الرواية
-                        else objectName = "رواية محذوفة (ID: " + r.details + ")";
+                    const cleanStoryID = parseInt(r.details.trim());
+                    if (!isNaN(cleanStoryID)) {
+                        const { data: storyData } = await _sb.from('stories').select('title').eq('id', cleanStoryID).maybeSingle();
+                        if (storyData) storyTitle = storyData.title;
+                        else storyTitle = "رواية محذوفة (رقم: " + cleanStoryID + ")";
                     } else {
-                        objectName = r.details; 
+                        storyTitle = r.details; // إذا كان النص ليس رقماً
                     }
                 }
 
-                return { ...r, reportedName, objectName };
+                return { ...r, reportedUsername, storyTitle };
             }));
 
-            renderReports(enhancedReports);
+            render(enhancedReports);
         }
 
-        function renderReports(reports) {
+        function render(reports) {
             const container = document.getElementById('reports-list');
             document.getElementById('loading').style.display = 'none';
 
             if (!reports.length) {
-                container.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">لا توجد بلاغات حالياً.</div>';
+                container.innerHTML = '<p style="text-align:center;">لا توجد بلاغات.</p>';
                 return;
             }
 
             container.innerHTML = reports.map(r => `
-                <div class="report-card ${r.status}">
+                <div class="report-card">
                     <span class="badge ${r.comment_id ? 'badge-comment' : 'badge-story'}">
-                        <i class="fas ${r.comment_id ? 'fa-comment' : 'fa-book'}"></i> 
                         ${r.comment_id ? 'بلاغ عن تعليق' : 'بلاغ عن رواية'}
                     </span>
-
                     <div class="reason-title">${r.reason}</div>
                     
                     <div class="content-box">
-                        <span class="content-label">اسم الرواية / المحتوى المتبلغ عنه:</span>
-                        <span class="content-name">${r.objectName}</span>
+                        <small style="color:#888;">الشيء المتبلغ عنه:</small>
+                        <span class="content-name">${r.storyTitle}</span>
                     </div>
 
                     <div class="info-grid">
-                        <div class="info-item">
-                            <small>المُبلِغ:</small>
-                            <b>${r.reporter?.username || 'مستخدم مجهول'}</b>
-                        </div>
-                        <div class="info-item">
-                            <small>المُبلغ ضده:</small>
-                            <b>${r.reportedName}</b>
-                        </div>
+                        <div class="info-item"><small>المُبلغ:</small><br><b>${r.reporter?.username || 'مجهول'}</b></div>
+                        <div class="info-item"><small>المُخالف:</small><br><b>${r.reportedUsername}</b></div>
                     </div>
 
                     <div class="actions">
-                        <button class="btn btn-delete" onclick="handleDeleteContent('${r.id}', '${r.comment_id}', '${r.details}')">
-                            <i class="fas fa-trash-alt"></i> حذف المحتوى (الرواية/التعليق) المخالف
-                        </button>
-                        
-                        <button class="btn btn-resolve" onclick="updateReportStatus('${r.id}', 'resolved')">
-                            <i class="fas fa-check-double"></i> تم التعامل
-                        </button>
-
-                        <button class="btn btn-ban" onclick="handleQuickBan('${r.reported_user_}', '${r.reportedName}')">
-                            <i class="fas fa-user-slash"></i> حظر المُخالف 10 أيام
-                        </button>
+                        <button class="btn btn-delete" onclick="handleDelete('${r.id}', '${r.comment_id}', '${r.details}')">حذف المحتوى المخالف</button>
+                        <button class="btn btn-resolve" onclick="updateStatus('${r.id}')">تم التعامل</button>
+                        <button class="btn btn-ban" onclick="handleBan('${r.reported_user_}', '${r.reportedUsername}')">حظر 10 أيام</button>
                     </div>
                 </div>
             `).join('');
         }
 
-        // وظيفة حذف المحتوى
-        async function handleDeleteContent(reportId, commentId, storyId) {
-            const isComment = commentId && commentId !== 'null';
-            const type = isComment ? "التعليق" : "الرواية";
-            
-            if (!confirm(`هل أنتِ متأكدة من حذف ${type} نهائياً؟`)) return;
-
+        async function handleDelete(reportId, commentId, storyId) {
+            if (!confirm("حذف نهائي؟")) return;
             let error;
-            if (isComment) {
+            if (commentId && commentId !== 'null') {
                 const res = await _sb.from('comments').delete().eq('id', commentId);
                 error = res.error;
             } else {
-                const idNum = parseInt(storyId.trim());
-                const res = await _sb.from('stories').delete().eq('id', idNum);
+                const res = await _sb.from('stories').delete().eq('id', parseInt(storyId));
                 error = res.error;
             }
-
-            if (!error) {
-                alert(`تم حذف ${type} بنجاح.`);
-                updateReportStatus(reportId, 'resolved');
-            } else {
-                alert("خطأ أثناء الحذف: " + error.message);
-            }
+            if (!error) { alert("تم الحذف"); updateStatus(reportId); }
         }
 
-        // وظيفة الحظر السريع
-        async function handleQuickBan(userId, username) {
-            if (!userId || userId === 'null') return alert("ID المستخدم غير صالح.");
-            if (!confirm(`هل تريدين حظر ${username} لمدة 10 أيام؟`)) return;
-
+        async function handleBan(uid, name) {
+            if (!confirm(`حظر ${name}؟`)) return;
             const expiry = new Date();
             expiry.setDate(expiry.getDate() + 10);
-
-            const { error } = await _sb.from('profiles').update({
-                is_banned: true,
-                banned_until: expiry.toISOString(),
-                ban_reason: "مخالفة معايير النشر (بناءً على بلاغ)"
-            }).eq('id', userId.trim());
-
-            if (!error) {
-                alert(`تم حظر ${username} وتجميد حسابه بنجاح.`);
-                loadReports();
-            } else {
-                alert("فشل الحظر: " + error.message);
-            }
+            const { error } = await _sb.from('profiles').update({ is_banned: true, banned_until: expiry.toISOString() }).eq('id', uid.trim());
+            if (!error) { alert("تم الحظر"); loadReports(); }
         }
 
-        async function updateReportStatus(id, status) {
-            const { error } = await _sb.from('reports').update({ status }).eq('id', id);
-            if (!error) loadReports();
+        async function updateStatus(id) {
+            await _sb.from('reports').update({ status: 'resolved' }).eq('id', id);
+            loadReports();
         }
 
         window.onload = loadReports;
