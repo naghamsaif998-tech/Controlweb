@@ -7,176 +7,126 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        :root { --main: #d63384; --bg: #f8f9fa; --danger: #dc3545; --success: #28a745; }
+        :root { --main: #d63384; --bg: #f8f9fa; --danger: #dc3545; }
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; padding: 15px; direction: rtl; }
-        .header { background: linear-gradient(135deg, var(--main), #9d174d); color: white; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 20px; }
         .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .input-group { margin-bottom: 15px; }
-        .input-group label { display: block; margin-bottom: 8px; font-size: 14px; color: #444; font-weight: bold; }
-        .input-group input, .input-group select { width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 10px; outline: none; box-sizing: border-box; font-size: 15px; }
-        .input-group input:focus { border-color: var(--main); }
-        .btn { padding: 14px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.3s; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .input-group label { display: block; margin-bottom: 8px; font-weight: bold; color: #444; }
+        .input-group input, .input-group select { width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 10px; outline: none; }
+        .btn { padding: 14px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; width: 100%; font-size: 16px; transition: 0.3s; }
         .btn-primary { background: var(--main); color: white; }
-        .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
-        .admins-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        .admins-table td, .admins-table th { padding: 12px; border-bottom: 1px solid #eee; text-align: right; font-size: 14px; }
-        .role-badge { background: #e3f2fd; color: #0d47a1; padding: 4px 8px; border-radius: 8px; font-size: 12px; font-weight: bold; }
-        .alert-box { padding: 12px; border-radius: 10px; margin-bottom: 15px; display: none; font-size: 14px; border: 1px solid; }
-        .error { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
-        .success { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
+        .alert { padding: 12px; border-radius: 10px; margin-bottom: 15px; display: none; font-size: 14px; }
+        .alert-error { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+        .admins-table { width: 100%; border-collapse: collapse; }
+        .admins-table td, .admins-table th { padding: 12px; border-bottom: 1px solid #eee; text-align: right; }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h1><i class="fas fa-user-shield"></i> فريق العمل</h1>
-        <p>إنشاء حسابات بكلمة سر وتعيين الصلاحيات</p>
-    </div>
-
     <div class="card">
-        <div style="font-weight:bold; color:var(--main); margin-bottom:15px;"><i class="fas fa-plus"></i> إنشاء حساب مسؤول جديد</div>
-        
-        <div id="alert-msg" class="alert-box"></div>
+        <h2 style="color:var(--main); margin-top:0;"><i class="fas fa-user-shield"></i> إنشاء مسؤول جديد</h2>
+        <div id="status-msg" class="alert"></div>
 
         <div class="input-group">
-            <label>الاسم الكامل:</label>
-            <input type="text" id="adm-name" placeholder="مثلاً: مريم المشرفة">
+            <label>اسم المسؤول:</label>
+            <input type="text" id="adm-name" placeholder="الاسم الذي سيظهر للعامة">
         </div>
 
         <div class="input-group">
-            <label>البريد الإلكتروني للدخول:</label>
-            <input type="email" id="adm-email" placeholder="admin@example.com">
+            <label>البريد الإلكتروني:</label>
+            <input type="email" id="adm-email" placeholder="email@example.com">
         </div>
 
         <div class="input-group">
-            <label>كلمة السر:</label>
-            <input type="text" id="adm-password" placeholder="يجب أن لا تقل عن 6 خانات">
+            <label>كلمة السر (6 خانات فأكثر):</label>
+            <input type="password" id="adm-password" placeholder="أدخلي كلمة السر هنا">
         </div>
 
         <div class="input-group">
-            <label>نوع الصلاحية:</label>
+            <label>الدور الوظيفي:</label>
             <select id="adm-role">
-                <option value="moderator">مشرف (إدارة البلاغات)</option>
+                <option value="moderator">مشرف (إدارة المحتوى)</option>
                 <option value="admin">مسؤول (تحكم كامل)</option>
             </select>
         </div>
         
-        <button class="btn btn-primary" id="submit-btn" onclick="createNewAdminAccount()">
-            <i class="fas fa-user-plus"></i> إنشاء الحساب وتعيين الصلاحية
-        </button>
+        <button class="btn btn-primary" id="save-btn" onclick="secureAdminSignup()">إنشاء الحساب وتفعيل الصلاحيات</button>
     </div>
 
     <div class="card">
-        <div style="font-weight:bold; margin-bottom:15px;"><i class="fas fa-users-cog"></i> المسؤولون المعتمدون</div>
-        <div style="overflow-x: auto;">
-            <table class="admins-table">
-                <thead><tr><th>الاسم</th><th>البريد</th><th>الدور</th><th>إجراء</th></tr></thead>
-                <tbody id="admins-list"></tbody>
-            </table>
-        </div>
+        <h3>المسؤولون الحاليون</h3>
+        <table class="admins-table">
+            <thead><tr><th>المستخدم</th><th>الدور</th><th>إجراء</th></tr></thead>
+            <tbody id="admins-list"></tbody>
+        </table>
     </div>
 
 <script>
-    // بيانات الربط بـ Supabase
     const S_URL = 'https://yboxheficowekfzjatti.supabase.co';
     const S_KEY = 'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS'; 
     const _sb = supabase.createClient(S_URL, S_KEY);
 
-    // دالة لعرض رسائل التنبيه
-    function showAlert(msg, type) {
-        const box = document.getElementById('alert-msg');
-        box.className = `alert-box ${type}`;
-        box.innerText = msg;
-        box.style.display = 'block';
-    }
-
-    // 1. جلب قائمة المسؤولين ومعالجة خطأ 403
-    async function fetchAdmins() {
-        const { data, error } = await _sb.from('admin_permissions').select('role, user_id');
-        
-        if (error) {
-            console.error(error);
-            if (error.status === 403) {
-                showAlert("خطأ 403: يرجى تفعيل RLS Policies لجدول admin_permissions في Supabase.", "error");
-            }
-            return;
-        }
-
-        const tbody = document.getElementById('admins-list');
-        tbody.innerHTML = '';
-
-        for (const adm of data) {
-            const { data: profile } = await _sb.from('profiles').select('username, email').eq('id', adm.user_id).maybeSingle();
-            if (profile) {
-                tbody.innerHTML += `
-                    <tr>
-                        <td><b>${profile.username}</b></td>
-                        <td><small>${profile.email}</small></td>
-                        <td><span class="role-badge">${adm.role}</span></td>
-                        <td><button onclick="removeAdmin('${adm.user_id}')" style="color:var(--danger); border:none; background:none; cursor:pointer;"><i class="fas fa-trash"></i></button></td>
-                    </tr>`;
-            }
-        }
-    }
-
-    // 2. إنشاء الحساب ومعالجة خطأ 422
-    async function createNewAdminAccount() {
+    async function secureAdminSignup() {
         const name = document.getElementById('adm-name').value;
         const email = document.getElementById('adm-email').value;
         const password = document.getElementById('adm-password').value;
         const role = document.getElementById('adm-role').value;
-        const btn = document.getElementById('submit-btn');
+        const msg = document.getElementById('status-msg');
+        const btn = document.getElementById('save-btn');
 
-        if (!name || !email || !password) return alert("يرجى إدخال كافة البيانات");
-        if (password.length < 6) return alert("كلمة السر يجب أن تكون 6 رموز على الأقل");
+        if (!name || !email || password.length < 6) {
+            return showMsg("تأكدي من كتابة الاسم والبريد وكلمة سر لا تقل عن 6 أحرف", "alert-error");
+        }
 
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإنشاء...';
-        document.getElementById('alert-msg').style.display = 'none';
+        btn.innerText = "جاري المعالجة...";
 
-        // محاولة تسجيل الحساب في Auth
+        // 1. محاولة إنشاء الحساب (Signup) ومعالجة خطأ 422
         const { data: authData, error: authError } = await _sb.auth.signUp({
             email: email,
             password: password,
-            options: { data: { username: name } }
+            options: { data: { username: name, gems: 10 } } // تخصيص 10 جواهر للمسؤول الجديد أيضاً
         });
 
         if (authError) {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-user-plus"></i> إنشاء الحساب وتعيين الصلاحية';
-            // التعامل مع خطأ 422 (بريد مسجل مسبقاً أو بيانات غير صالحة)
-            const errorMsg = authError.status === 422 ? "هذا البريد مسجل مسبقاً أو تنسيق البيانات خاطئ." : authError.message;
-            return showAlert("فشل الإنشاء: " + errorMsg, "error");
+            btn.innerText = "إنشاء الحساب وتفعيل الصلاحيات";
+            return showMsg("خطأ 422: البريد مسجل مسبقاً أو التسجيل مغلق من إعدادات Auth.", "alert-error");
         }
 
         const userId = authData.user.id;
 
-        // ربط الحساب بجدول الصلاحيات
+        // 2. ربط الحساب بجدول الصلاحيات (معالجة نوع البيانات TEXT)
         const { error: permError } = await _sb.from('admin_permissions').insert([{
             user_id: userId,
             role: role,
-            permissions: ['reports', 'users', 'novels']
+            permissions: "novels,users,reports" // إرسالها كنص Text لتوافق نوع العمود في جدولك
         }]);
 
         if (permError) {
-            showAlert("تم إنشاء الحساب ولكن فشل منح الصلاحيات (Error 403). يرجى مراجعة Policies في Supabase.", "error");
+            showMsg("تم إنشاء الحساب، ولكن فشل تعيين الصلاحيات (Error 403). راجعي RLS Policies.", "alert-error");
         } else {
-            showAlert("✅ تم إنشاء حساب المسؤول بنجاح! يمكنه الدخول الآن ببياناته.", "success");
-            // تصفير الحقول
-            document.getElementById('adm-name').value = '';
-            document.getElementById('adm-email').value = '';
-            document.getElementById('adm-password').value = '';
-            fetchAdmins();
+            alert("تم إنشاء الحساب بنجاح! أعطي المسؤول البريد وكلمة السر للدخول.");
+            location.reload();
         }
-
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-user-plus"></i> إنشاء الحساب وتعيين الصلاحية';
     }
 
-    async function removeAdmin(uid) {
-        if (confirm("هل تريدين سحب صلاحيات المسؤول؟")) {
-            const { error } = await _sb.from('admin_permissions').delete().eq('user_id', uid);
-            if (!error) fetchAdmins();
+    function showMsg(text, type) {
+        const msg = document.getElementById('status-msg');
+        msg.className = `alert ${type}`;
+        msg.innerText = text;
+        msg.style.display = 'block';
+    }
+
+    async function fetchAdmins() {
+        const { data, error } = await _sb.from('admin_permissions').select('role, user_id');
+        if (error) return console.error(error);
+
+        const tbody = document.getElementById('admins-list');
+        for (const adm of data) {
+            const { data: profile } = await _sb.from('profiles').select('username').eq('id', adm.user_id).single();
+            tbody.innerHTML += `<tr><td>${profile?.username || '---'}</td><td>${adm.role}</td><td><button onclick="removeAdmin('${adm.user_id}')" style="color:red; background:none; border:none; cursor:pointer;"><i class="fas fa-trash"></i></button></td></tr>`;
         }
     }
 
