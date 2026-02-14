@@ -3,67 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>إضافة مسؤول جديد | فلامنكو</title>
+    <title>إدارة فريق العمل | فلامنكو</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        :root { --main: #d63384; --bg: #f8f9fa; --danger: #dc3545; --success: #28a745; }
+        :root { --main: #d63384; --bg: #f8f9fa; --danger: #dc3545; --success: #28a745; --warning: #ffc107; }
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; padding: 15px; direction: rtl; }
         .header { background: linear-gradient(135deg, var(--main), #9d174d); color: white; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 20px; }
         .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .input-group { margin-bottom: 15px; }
-        .input-group label { display: block; margin-bottom: 5px; font-size: 14px; color: #666; font-weight: bold; }
-        .input-group input, .input-group select { width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 10px; outline: none; box-sizing: border-box; }
+        .input-group label { display: block; margin-bottom: 8px; font-size: 14px; color: #444; font-weight: bold; }
+        .input-group input, .input-group select { width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 10px; outline: none; box-sizing: border-box; font-size: 15px; }
         .input-group input:focus { border-color: var(--main); }
-        .btn { padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.3s; font-size: 16px; }
+        .btn { padding: 14px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.3s; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .btn-primary { background: var(--main); color: white; }
-        .admins-table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; border-radius: 10px; overflow: hidden; }
+        .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+        .admins-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         .admins-table td, .admins-table th { padding: 12px; border-bottom: 1px solid #eee; text-align: right; font-size: 14px; }
-        .role-badge { background: #e3f2fd; color: #0d47a1; padding: 4px 8px; border-radius: 8px; font-size: 12px; }
-        #msg { padding: 10px; border-radius: 8px; margin-bottom: 10px; display: none; text-align: center; font-size: 14px; }
+        .role-badge { background: #e3f2fd; color: #0d47a1; padding: 4px 8px; border-radius: 8px; font-size: 12px; font-weight: bold; }
+        .error-box { background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 8px; margin-bottom: 15px; display: none; font-size: 13px; border: 1px solid #fecaca; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1><i class="fas fa-user-plus"></i> إنشاء حساب مسؤول</h1>
-        <p>أنشئي حساباً جديداً بكلمة سر خاصة للفريق</p>
+        <h1><i class="fas fa-user-shield"></i> إدارة فريق العمل</h1>
+        <p>إنشاء حسابات المسؤولين وتحديد كلمات السر</p>
     </div>
 
-    <div id="msg"></div>
-
     <div class="card">
+        <div style="font-weight:bold; color:var(--main); margin-bottom:15px;"><i class="fas fa-user-plus"></i> إضافة مسؤول جديد بكلمة سر</div>
+        
+        <div id="error-display" class="error-box"></div>
+
         <div class="input-group">
-            <label>اسم المسؤول (Username):</label>
-            <input type="text" id="adm-name" placeholder="مثلاً: أحمد_المشرف">
+            <label>اسم المستخدم (يظهر في التطبيق):</label>
+            <input type="text" id="adm-name" placeholder="مثال: مريم_الرقابة">
         </div>
 
         <div class="input-group">
-            <label>البريد الإلكتروني:</label>
-            <input type="email" id="adm-email" placeholder="email@example.com">
+            <label>البريد الإلكتروني (للدخول):</label>
+            <input type="email" id="adm-email" placeholder="admin@flamenco.com">
         </div>
 
         <div class="input-group">
-            <label>كلمة السر التي ستعطيها له:</label>
-            <input type="text" id="adm-password" placeholder="اكتبي كلمة سر قوية">
+            <label>كلمة السر (التي سيستخدمها للدخول):</label>
+            <input type="text" id="adm-password" placeholder="يجب أن لا تقل عن 6 خانات">
         </div>
 
         <div class="input-group">
-            <label>الدور الوظيفي:</label>
+            <label>الصلاحية:</label>
             <select id="adm-role">
-                <option value="moderator">مشرف (مراجعة البلاغات)</option>
-                <option value="admin">مسؤول (تحكم كامل)</option>
+                <option value="moderator">مشرف (إدارة البلاغات فقط)</option>
+                <option value="admin">مسؤول (صلاحيات كاملة)</option>
             </select>
         </div>
         
-        <button class="btn btn-primary" onclick="createNewAdminAccount()">إنشاء الحساب وتعيينه مسؤولاً</button>
+        <button class="btn btn-primary" id="submit-btn" onclick="createNewAdminAccount()">
+            <i class="fas fa-save"></i> إنشاء الحساب وتعيينه
+        </button>
     </div>
 
     <div class="card">
-        <div style="font-weight:bold; margin-bottom:10px;"><i class="fas fa-users-cog"></i> الفريق الحالي</div>
+        <div style="font-weight:bold; margin-bottom:15px;"><i class="fas fa-users"></i> قائمة المسؤولين الحالية</div>
         <div style="overflow-x: auto;">
             <table class="admins-table">
-                <thead><tr><th>الاسم</th><th>البريد</th><th>الدور</th></tr></thead>
+                <thead><tr><th>الاسم</th><th>البريد</th><th>الدور</th><th>إجراء</th></tr></thead>
                 <tbody id="admins-list"></tbody>
             </table>
         </div>
@@ -74,33 +79,52 @@
     const S_KEY = 'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS'; 
     const _sb = supabase.createClient(S_URL, S_KEY);
 
+    // دالة لجلب المسؤولين وعرضهم
     async function fetchAdmins() {
+        // جلب البيانات مع فحص الأخطاء (403)
         const { data, error } = await _sb.from('admin_permissions').select('role, user_id');
-        if (error) return;
+        
+        if (error) {
+            console.error("Permission Error:", error);
+            document.getElementById('error-display').style.display = 'block';
+            document.getElementById('error-display').innerText = "خطأ 403: يرجى تفعيل RLS Policies لجدول admin_permissions في Supabase.";
+            return;
+        }
+
         const tbody = document.getElementById('admins-list');
         tbody.innerHTML = '';
+
         for (const adm of data) {
             const { data: profile } = await _sb.from('profiles').select('username, email').eq('id', adm.user_id).maybeSingle();
             if (profile) {
-                tbody.innerHTML += `<tr><td><b>${profile.username}</b></td><td><small>${profile.email}</small></td><td><span class="role-badge">${adm.role}</span></td></tr>`;
+                tbody.innerHTML += `
+                    <tr>
+                        <td><b>${profile.username}</b></td>
+                        <td><small>${profile.email}</small></td>
+                        <td><span class="role-badge">${adm.role === 'admin' ? 'مسؤول' : 'مشرف'}</span></td>
+                        <td><button onclick="removeAdmin('${adm.user_id}')" style="color:var(--danger); border:none; background:none; cursor:pointer;"><i class="fas fa-trash"></i></button></td>
+                    </tr>`;
             }
         }
     }
 
+    // دالة إنشاء الحساب الجديد ومعالجة خطأ 422
     async function createNewAdminAccount() {
         const name = document.getElementById('adm-name').value;
         const email = document.getElementById('adm-email').value;
         const password = document.getElementById('adm-password').value;
         const role = document.getElementById('adm-role').value;
-        const msg = document.getElementById('msg');
+        const btn = document.getElementById('submit-btn');
+        const errBox = document.getElementById('error-display');
 
-        if (!name || !email || !password) return alert("يرجى ملء جميع البيانات");
+        if (!name || !email || !password) return alert("يرجى تعبئة كافة الحقول");
+        if (password.length < 6) return alert("كلمة السر ضعيفة، يجب أن تكون 6 رموز على الأقل");
 
-        msg.style.display = 'block';
-        msg.style.background = '#fff3cd';
-        msg.innerText = "جاري إنشاء الحساب...";
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإنشاء...';
+        errBox.style.display = 'none';
 
-        // 1. إنشاء الحساب في نظام Supabase Auth بكلمة السر
+        // 1. إنشاء الحساب في Auth (يتعامل مع خطأ 422 إذا كان البريد موجوداً)
         const { data: authData, error: authError } = await _sb.auth.signUp({
             email: email,
             password: password,
@@ -108,14 +132,16 @@
         });
 
         if (authError) {
-            msg.style.background = '#f8d7da';
-            msg.innerText = "خطأ: " + authError.message;
+            errBox.style.display = 'block';
+            errBox.innerText = "خطأ في الإنشاء: " + authError.message;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> إنشاء الحساب وتعيينه';
             return;
         }
 
         const userId = authData.user.id;
 
-        // 2. تعيينه كمسؤول في جدول admin_permissions
+        // 2. ربط الحساب بجدول admin_permissions
         const { error: permError } = await _sb.from('admin_permissions').insert([{
             user_id: userId,
             role: role,
@@ -123,12 +149,25 @@
         }]);
 
         if (permError) {
-            msg.style.background = '#f8d7da';
-            msg.innerText = "تم إنشاء الحساب ولكن فشل تعيين الصلاحيات.";
+            errBox.style.display = 'block';
+            errBox.innerText = "تم إنشاء الحساب، ولكن فشل تعيين الصلاحيات (خطأ 403). تأكدي من قواعد الـ RLS.";
         } else {
-            msg.style.background = '#d4edda';
-            msg.innerHTML = `✅ تم بنجاح!<br>أعطي المسؤول هذا البريد وكلمة السر التي كتبتيها.`;
+            alert("✅ تم إنشاء حساب المسؤول بنجاح! يمكنه الآن الدخول بكلمة السر.");
+            // تصفير الحقول
+            document.getElementById('adm-name').value = '';
+            document.getElementById('adm-email').value = '';
+            document.getElementById('adm-password').value = '';
             fetchAdmins();
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save"></i> إنشاء الحساب وتعيينه';
+    }
+
+    async function removeAdmin(uid) {
+        if (confirm("هل تريدين سحب صلاحيات المسؤول وحذفه من القائمة؟")) {
+            const { error } = await _sb.from('admin_permissions').delete().eq('user_id', uid);
+            if (!error) fetchAdmins();
         }
     }
 
@@ -136,4 +175,3 @@
 </script>
 </body>
 </html>
-
