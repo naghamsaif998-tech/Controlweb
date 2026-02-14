@@ -7,17 +7,15 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        :root { --main: #d63384; --bg: #f8f9fa; --danger: #dc3545; --dark: #1a1a1a; --success: #28a745; --warning: #ffc107; }
+        :root { --main: #d63384; --bg: #f8f9fa; --danger: #dc3545; --success: #28a745; --warning: #ffc107; }
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; padding: 15px; direction: rtl; }
         .header { background: linear-gradient(135deg, var(--main), #9d174d); color: white; padding: 20px; text-align: center; border-radius: 15px; margin-bottom: 20px; }
         .report-card { background: white; padding: 20px; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.08); border: 1px solid #eee; }
         .badge { padding: 5px 12px; border-radius: 50px; font-size: 11px; font-weight: bold; margin-bottom: 10px; display: inline-block; background: #fff0f6; color: var(--main); border: 1px solid #ffd6e7; }
         .content-box { background: #fff5f8; padding: 15px; border-radius: 12px; border: 1px dashed var(--main); margin: 15px 0; }
-        .content-name { font-size: 17px; font-weight: bold; color: var(--main); display: block; margin-top: 5px; }
         .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-top: 1px solid #f0f0f0; padding-top: 15px; }
-        .info-item b { color: #333; font-size: 14px; }
         .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; }
-        .btn { flex: 1; padding: 12px; border: none; border-radius: 10px; cursor: pointer; color: white; font-weight: bold; font-size: 13px; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .btn { flex: 1; padding: 12px; border: none; border-radius: 10px; cursor: pointer; color: white; font-weight: bold; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 5px; }
         .btn-delete { background: var(--danger); width: 100%; flex: none; }
         .btn-resolve { background: var(--success); }
         .ban-status { font-size: 11px; color: var(--danger); margin-top: 5px; font-weight: bold; display: block; }
@@ -26,8 +24,8 @@
 </head>
 <body>
 
-<div class="header"><h1>مركز الإشراف</h1></div>
-<div id="loading"><i class="fas fa-spinner fa-spin fa-2x"></i><p>جاري تحديث البيانات...</p></div>
+<div class="header"><h1>مركز الإشراف والرقابة</h1></div>
+<div id="loading"><i class="fas fa-spinner fa-spin fa-2x"></i><p>جاري تحميل البلاغات...</p></div>
 <div id="reports-list"></div>
 
 <script>
@@ -37,59 +35,53 @@
 
     async function loadReports() {
         try {
-            const { data: reports, error } = await _sb.from('reports').select('*').order('created_at', { ascending: false });
+            // جلب البلاغات المفتوحة (Pending)
+            const { data: reports, error } = await _sb.from('reports').select('*').eq('status', 'pending').order('created_at', { ascending: false });
             if (error) throw error;
 
             let html = '';
             const now = new Date();
 
             for (let r of reports) {
-                let storyTitle = "رواية غير معروفة";
-                let reportedName = "مستخدم";
                 let reporterName = "مجهول";
                 let offenderData = null;
 
-                // 1. اسم المبلّغ
+                // جلب اسم المبلّغ
                 if (r.reporter_id) {
                     const { data: p } = await _sb.from('profiles').select('username').eq('id', r.reporter_id).maybeSingle();
                     if (p) reporterName = p.username;
                 }
 
-                // 2. بيانات الرواية والكاتب
+                // جلب بيانات الشخص المبلَّغ عنه (المعتدي)
+                // ملحوظة: الكود يفترض أن r.details يحتوي على ID الرواية
                 if (r.details) {
                     const sId = parseInt(r.details.toString().replace(/\D/g, ''));
                     if (!isNaN(sId)) {
-                        const { data: story } = await _sb.from('stories').select('title, author_id').eq('id', sId).maybeSingle();
+                        const { data: story } = await _sb.from('stories').select('author_id').eq('id', sId).maybeSingle();
                         if (story) {
-                            storyTitle = story.title;
                             const { data: p2 } = await _sb.from('profiles').select('*').eq('id', story.author_id).maybeSingle();
-                            if (p2) {
-                                offenderData = p2;
-                                reportedName = p2.username;
-                            }
+                            if (p2) offenderData = p2;
                         }
                     }
                 }
 
-                // فحص الحظر
                 const banExpiry = offenderData?.banned_until ? new Date(offenderData.banned_until) : null;
                 const isCurrentlyBanned = offenderData?.is_banned && banExpiry && banExpiry > now;
 
                 html += `
                 <div class="report-card">
-                    <span class="badge">${r.comment_id ? 'بلاغ عن تعليق' : 'بلاغ عن رواية'}</span>
-                    <div style="font-weight:bold; font-size:18px;">${r.reason}</div>
+                    <span class="badge">${r.comment_id ? 'بلاغ عن تعليق' : 'بلاغ عن محتوى'}</span>
+                    <div style="font-weight:bold; font-size:17px; margin-bottom:10px;">السبب: ${r.reason}</div>
                     
                     <div class="content-box">
-                        <small>اسم الرواية:</small>
-                        <span class="content-name">${storyTitle}</span>
+                        <small>كود المحتوى (ID):</small> <b>${r.details || 'غير متوفر'}</b>
                     </div>
 
                     <div class="info-grid">
-                        <div class="info-item"><small>بواسطة:</small><br><b>${reporterName}</b></div>
+                        <div class="info-item"><small>المبلّغ:</small><br><b>${reporterName}</b></div>
                         <div class="info-item">
-                            <small>ضد الكاتب:</small><br><b>${reportedName}</b>
-                            ${isCurrentlyBanned ? `<span class="ban-status"><i class="fas fa-clock"></i> محظور لـ ${banExpiry.toLocaleDateString('ar-EG')}</span>` : ''}
+                            <small>الكاتب المخالف:</small><br><b>${offenderData?.username || 'غير معروف'}</b>
+                            ${isCurrentlyBanned ? `<span class="ban-status"><i class="fas fa-clock"></i> محظور حتى ${banExpiry.toLocaleDateString('ar-EG')}</span>` : ''}
                         </div>
                     </div>
 
@@ -99,10 +91,10 @@
                         </button>
                         
                         <button class="btn" 
-                                onclick="handleBanAction('${offenderData?.id}', '${reportedName}', ${isCurrentlyBanned})"
+                                onclick="handleBanAction('${offenderData?.id}', '${offenderData?.username}', ${isCurrentlyBanned})"
                                 style="background: ${isCurrentlyBanned ? 'var(--success)' : 'var(--warning)'}; color: ${isCurrentlyBanned ? 'white' : 'black'}">
                             <i class="fas ${isCurrentlyBanned ? 'fa-unlock' : 'fa-user-slash'}"></i>
-                            ${isCurrentlyBanned ? 'فك الحظر الآن' : 'حظر 10 أيام'}
+                            ${isCurrentlyBanned ? 'فك الحظر' : 'حظر 10 أيام'}
                         </button>
 
                         <button class="btn btn-resolve" onclick="handleResolve('${r.id}')">
@@ -113,52 +105,79 @@
             }
 
             document.getElementById('loading').style.display = 'none';
-            document.getElementById('reports-list').innerHTML = html || '<p style="text-align:center;">لا توجد بلاغات.</p>';
+            document.getElementById('reports-list').innerHTML = html || '<p style="text-align:center;">لا توجد بلاغات حالية.</p>';
 
         } catch (err) {
-            console.error(err);
-            document.getElementById('loading').innerHTML = "حدث خطأ: " + err.message;
+            document.getElementById('loading').innerHTML = "خطأ في التحميل: " + err.message;
         }
     }
 
     window.handleBanAction = async (uid, name, isBanned) => {
-        if (!uid || uid === "null" || uid === "undefined") return alert("لا يمكن تحديد المستخدم");
+        if (!uid || uid === "undefined") return alert("تعذر العثور على ID المستخدم");
 
         if (!isBanned) {
-            if (!confirm(`هل تريد حظر ${name} لمدة 10 أيام؟`)) return;
+            const reason = prompt(`سبب حظر ${name}:`, "مخالفة معايير المجتمع");
+            if (reason === null) return;
 
             const expiry = new Date();
             expiry.setDate(expiry.getDate() + 10);
             
-            // تحديث الحظر فقط بدون إشعارات
-            const { error } = await _sb.from('profiles').update({
+            // 1. تحديث جدول الـ Profiles (إضافة الحظر والسبب)
+            const { error: banError } = await _sb.from('profiles').update({
                 is_banned: true, 
-                banned_until: expiry.toISOString()
+                banned_until: expiry.toISOString(),
+                ban_reason: reason
             }).eq('id', uid);
 
-            if (!error) {
-                alert("تم حظر المستخدم بنجاح");
+            if (!banError) {
+                // 2. إرسال الإشعار (مطابق لأعمدة جدول notifications لديكِ)
+                await _sb.from('notifications').insert([{
+                    recipient_id: uid,
+                    title: "⚠️ تم حظر حسابك",
+                    message: `تم حظر حسابك لمدة 10 أيام بسبب: ${reason}`,
+                    type: 'ban',
+                    is_read: false
+                }]);
+
+                alert("تم الحظر وإرسال الإشعار");
                 loadReports();
             }
         } else {
-            if (!confirm(`هل تريد فك الحظر عن ${name}؟`)) return;
-            const { error } = await _sb.from('profiles').update({ 
+            if (!confirm(`فك الحظر عن ${name}؟`)) return;
+            
+            // 1. إزالة الحظر من الـ Profile
+            const { error: unbanError } = await _sb.from('profiles').update({ 
                 is_banned: false, 
-                banned_until: null 
+                banned_until: null, 
+                ban_reason: null 
             }).eq('id', uid);
             
-            if (!error) {
-                alert("تم فك الحظر بنجاح");
+            if (!unbanError) {
+                // 2. إرسال إشعار فك الحظر
+                await _sb.from('notifications').insert([{
+                    recipient_id: uid,
+                    title: "✅ تم فك الحظر",
+                    message: "يمكنك الآن العودة لاستخدام حسابك. نرجو الالتزام بالقوانين.",
+                    type: 'general',
+                    is_read: false
+                }]);
+
+                alert("تم فك الحظر وإخطار المستخدم");
                 loadReports();
             }
         }
     };
 
     async function handleDelete(reportId, storyId) {
-        if (!confirm("حذف الرواية نهائياً؟")) return;
+        if (!confirm("هل أنت متأكد من حذف هذا المحتوى نهائياً؟")) return;
         const sId = parseInt(storyId.toString().replace(/\D/g, ''));
-        await _sb.from('stories').delete().eq('id', sId);
-        handleResolve(reportId);
+        const { error } = await _sb.from('stories').delete().eq('id', sId);
+        if (!error) {
+            alert("تم الحذف بنجاح");
+            handleResolve(reportId);
+        } else {
+            alert("خطأ في الحذف: " + error.message);
+        }
     }
 
     async function handleResolve(id) {
