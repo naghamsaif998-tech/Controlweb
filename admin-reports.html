@@ -19,7 +19,7 @@
         .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; }
         .btn { flex: 1; padding: 12px; border: none; border-radius: 10px; cursor: pointer; color: white; font-weight: bold; font-size: 13px; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 5px; }
         .btn-delete { background: var(--danger); width: 100%; flex: none; }
-        .btn-resolve { background: var(--success); }
+        .btn-resolve { background: #6c757d; } /* لون رمادي لزر التجاهل */
         .ban-status { font-size: 11px; color: var(--danger); margin-top: 5px; font-weight: bold; display: block; }
         #loading { text-align: center; padding: 40px; }
     </style>
@@ -27,7 +27,7 @@
 <body>
 
 <div class="header"><h1>مركز الإشراف الذكي</h1></div>
-<div id="loading"><i class="fas fa-spinner fa-spin fa-2x"></i><p>جاري فحص البلاغات وحالة المستخدمين...</p></div>
+<div id="loading"><i class="fas fa-spinner fa-spin fa-2x"></i><p>جاري فحص البلاغات...</p></div>
 <div id="reports-list"></div>
 
 <script>
@@ -36,35 +36,45 @@
     const _sb = supabase.createClient(SB_URL, SB_KEY);
 
     async function loadReports() {
+        document.getElementById('loading').style.display = 'block';
         try {
-            const { data: reports, error } = await _sb.from('reports').select('*').order('created_at', { ascending: false });
+            // جلب البلاغات التي لم تُحل بعد
+            const { data: reports, error } = await _sb.from('reports').select('*').neq('status', 'resolved').order('created_at', { ascending: false });
             if (error) throw error;
 
             let html = '';
             const now = new Date();
 
             for (let r of reports) {
-                let storyTitle = "رواية غير معروفة";
+                let storyTitle = r.comment_id ? "تعليق مخالف" : "رواية غير معروفة";
                 let reportedName = "مستخدم";
                 let reporterName = "مجهول";
                 let offenderData = null;
 
+                // 1. اسم المبلّغ
                 if (r.reporter_id) {
                     const { data: p } = await _sb.from('profiles').select('username').eq('id', r.reporter_id).maybeSingle();
                     if (p) reporterName = p.username;
                 }
 
-                if (r.details) {
+                // 2. معالجة المحتوى (تعليق أم رواية)
+                if (r.comment_id) {
+                    // إذا كان بلاغ عن تعليق
+                    const { data: comm } = await _sb.from('comments').select('content, user_id').eq('id', r.comment_id).maybeSingle();
+                    if (comm) {
+                        storyTitle = "محتوى التعليق: " + comm.content;
+                        const { data: p2 } = await _sb.from('profiles').select('*').eq('id', comm.user_id).maybeSingle();
+                        if (p2) { offenderData = p2; reportedName = p2.username; }
+                    }
+                } else if (r.details) {
+                    // إذا كان بلاغ عن رواية
                     const sId = parseInt(r.details.toString().replace(/\D/g, ''));
                     if (!isNaN(sId)) {
                         const { data: story } = await _sb.from('stories').select('title, author_id').eq('id', sId).maybeSingle();
                         if (story) {
                             storyTitle = story.title;
                             const { data: p2 } = await _sb.from('profiles').select('*').eq('id', story.author_id).maybeSingle();
-                            if (p2) {
-                                offenderData = p2;
-                                reportedName = p2.username;
-                            }
+                            if (p2) { offenderData = p2; reportedName = p2.username; }
                         }
                     }
                 }
@@ -91,26 +101,26 @@
                     </div>
 
                     <div class="actions">
-                        <button class="btn btn-delete" onclick="handleDelete('${r.id}', '${r.details}')">
-                            <i class="fas fa-trash"></i> حذف المحتوى
+                        <button class="btn btn-delete" onclick="handleDelete('${r.id}', '${r.details}', '${r.comment_id}')">
+                            <i class="fas fa-trash"></i> حذف المحتوى المخالف
                         </button>
                         
                         <button class="btn" 
                                 onclick="handleBanAction('${offenderData?.id}', '${reportedName}', ${isCurrentlyBanned})"
                                 style="background: ${isCurrentlyBanned ? 'var(--success)' : 'var(--warning)'}; color: ${isCurrentlyBanned ? 'white' : 'black'}">
                             <i class="fas ${isCurrentlyBanned ? 'fa-unlock' : 'fa-user-slash'}"></i>
-                            ${isCurrentlyBanned ? 'فك الحظر الآن' : 'حظر 10 أيام'}
+                            ${isCurrentlyBanned ? 'فك الحظر' : 'حظر 10 أيام'}
                         </button>
 
                         <button class="btn btn-resolve" onclick="handleResolve('${r.id}')">
-                            <i class="fas fa-check-circle"></i> إغلاق البلاغ
+                            <i class="fas fa-eye-slash"></i> تجاهل البلاغ
                         </button>
                     </div>
                 </div>`;
             }
 
             document.getElementById('loading').style.display = 'none';
-            document.getElementById('reports-list').innerHTML = html || '<p style="text-align:center;">لا توجد بلاغات.</p>';
+            document.getElementById('reports-list').innerHTML = html || '<p style="text-align:center;">لا توجد بلاغات حالياً.</p>';
 
         } catch (err) {
             console.error(err);
@@ -118,73 +128,64 @@
         }
     }
 
+    // وظيفة الحذف الذكي (تعليق أو رواية)
+    window.handleDelete = async (reportId, storyIdStr, commentId) => {
+        const type = commentId !== "null" && commentId !== "" ? "التعليق" : "الرواية";
+        if (!confirm(`هل أنت متأكد من حذف ${type} نهائياً؟`)) return;
+
+        let error;
+        if (type === "التعليق") {
+            const result = await _sb.from('comments').delete().eq('id', commentId);
+            error = result.error;
+        } else {
+            const sId = parseInt(storyIdStr.replace(/\D/g, ''));
+            const result = await _sb.from('stories').delete().eq('id', sId);
+            error = result.error;
+        }
+
+        if (!error) {
+            alert(`تم حذف ${type} بنجاح`);
+            handleResolve(reportId); // إخفاء البلاغ بعد الحذف
+        } else {
+            alert("حدث خطأ أثناء الحذف: " + error.message);
+        }
+    };
+
     window.handleBanAction = async (uid, name, isBanned) => {
         if (!uid || uid === "null" || uid === "undefined") return alert("لا يمكن تحديد المستخدم");
 
         if (!isBanned) {
             const reason = prompt(`سبب حظر ${name} لمدة 10 أيام:`, "مخالفة معايير النشر");
             if (reason === null) return;
-
             const expiry = new Date();
             expiry.setDate(expiry.getDate() + 10);
             
-            // 1. تحديث الحظر في البروفايل
-            const { error: banError } = await _sb.from('profiles').update({
-                is_banned: true, 
-                banned_until: expiry.toISOString(),
-                ban_reason: reason
-            }).eq('id', uid);
-
-            if (!banError) {
-                // 2. إرسال الإشعار لجدول الإشعارات
-                await _sb.from('notifications').insert([{
-                    recipient_id: uid,
-                    title: "⚠️ تنبيه حظر حساب",
-                    message: `تم حظر حسابك لمدة 10 أيام بسبب: ${reason}`,
-                    type: 'ban',
-                    is_read: false
-                }]);
-
-                alert("تم تنفيذ الحظر وإرسال الإشعار");
+            const { error } = await _sb.from('profiles').update({ is_banned: true, banned_until: expiry.toISOString(), ban_reason: reason }).eq('id', uid);
+            if (!error) {
+                await _sb.from('notifications').insert([{ recipient_id: uid, title: "⚠️ تنبيه حظر حساب", message: `تم حظر حسابك لمدة 10 أيام بسبب: ${reason}`, type: 'ban', is_read: false }]);
+                alert("تم الحظر وإرسال الإشعار");
                 loadReports();
             }
         } else {
             if (!confirm(`هل تريد فك الحظر عن ${name}؟`)) return;
-            
-            // 1. فك الحظر في البروفايل
-            const { error: unbanError } = await _sb.from('profiles').update({ 
-                is_banned: false, 
-                banned_until: null, 
-                ban_reason: null 
-            }).eq('id', uid);
-            
-            if (!unbanError) {
-                // 2. إرسال إشعار فك الحظر
-                await _sb.from('notifications').insert([{
-                    recipient_id: uid,
-                    title: "✅ تم فك الحظر",
-                    message: "تم فك الحظر عن حسابك، يمكنك استخدامه الآن.",
-                    type: 'general',
-                    is_read: false
-                }]);
-
-                alert("تم فك الحظر وإرسال الإشعار");
+            const { error } = await _sb.from('profiles').update({ is_banned: false, banned_until: null, ban_reason: null }).eq('id', uid);
+            if (!error) {
+                await _sb.from('notifications').insert([{ recipient_id: uid, title: "✅ تم فك الحظر", message: "تم فك الحظر عن حسابك، يمكنك استخدامه الآن.", type: 'general', is_read: false }]);
+                alert("تم فك الحظر");
                 loadReports();
             }
         }
     };
 
-    async function handleDelete(reportId, storyId) {
-        if (!confirm("حذف الرواية نهائياً؟")) return;
-        const sId = parseInt(storyId.toString().replace(/\D/g, ''));
-        await _sb.from('stories').delete().eq('id', sId);
-        handleResolve(reportId);
-    }
-
-    async function handleResolve(id) {
-        await _sb.from('reports').update({ status: 'resolved' }).eq('id', id);
-        loadReports();
-    }
+    // وظيفة تجاهل البلاغ (تحديث الحالة لـ resolved ليختفي من القائمة)
+    window.handleResolve = async (id) => {
+        const { error } = await _sb.from('reports').update({ status: 'resolved' }).eq('id', id);
+        if (!error) {
+            loadReports(); // إعادة تحميل القائمة ليختفي الكرت
+        } else {
+            alert("خطأ في تحديث حالة البلاغ");
+        }
+    };
 
     window.onload = loadReports;
 </script>
