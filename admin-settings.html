@@ -3,23 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>إدارة فريق فلامنكو</title>
+    <title>إدارة صلاحيات الإدارة | فلامنكو</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
         :root { --main: #d63384; --bg: #f8f9fa; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); padding: 20px; direction: rtl; }
-        .card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }
-        .input-group { margin-bottom: 15px; }
-        .input-group label { display: block; margin-bottom: 5px; font-weight: bold; }
-        .input-group input, .input-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        .btn { width: 100%; padding: 12px; background: var(--main); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
+        .input-group { margin-bottom: 15px; text-align: right; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; }
+        .btn { width: 100%; padding: 14px; background: var(--main); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; margin-top: 10px; }
         .btn:disabled { background: #ccc; }
-        .alert { padding: 10px; border-radius: 8px; margin-bottom: 15px; display: none; text-align: center; }
+        .alert { padding: 12px; border-radius: 10px; margin-bottom: 15px; display: none; text-align: center; font-size: 14px; }
         .error { background: #fee2e2; color: #b91c1c; }
         .success { background: #dcfce7; color: #15803d; }
         table { width: 100%; margin-top: 20px; border-collapse: collapse; }
-        th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: right; font-size: 14px; }
+        th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: center; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -30,12 +30,14 @@
 
     <div class="input-group">
         <label>البريد الإلكتروني:</label>
-        <input type="email" id="email" placeholder="example@mail.com">
+        <input type="email" id="email" placeholder="example@gmail.com">
     </div>
+    
     <div class="input-group">
-        <label>كلمة السر (للجديد فقط):</label>
+        <label>كلمة السر (للحسابات الجديدة):</label>
         <input type="password" id="pass" placeholder="6 رموز على الأقل">
     </div>
+
     <div class="input-group">
         <label>الدور الوظيفي:</label>
         <select id="role">
@@ -43,10 +45,17 @@
             <option value="moderator">مشرف (Moderator)</option>
         </select>
     </div>
-    <button id="saveBtn" class="btn" onclick="saveAdmin()">تفعيل / إنشاء الحساب</button>
+
+    <button id="saveBtn" class="btn" onclick="handleAdmin()">تفعيل / إنشاء الحساب</button>
 
     <table>
-        <thead><tr><th>المعرف</th><th>الدور</th><th>حذف</th></tr></thead>
+        <thead>
+            <tr>
+                <th>المعرف</th>
+                <th>الدور</th>
+                <th>حذف</th>
+            </tr>
+        </thead>
         <tbody id="list"></tbody>
     </table>
 </div>
@@ -56,33 +65,35 @@
     const S_KEY = 'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS';
     const _sb = supabase.createClient(S_URL, S_KEY);
 
-    async function load() {
+    async function loadAdmins() {
         const { data, error } = await _sb.from('admin_permissions').select('*');
         if (!error) {
-            document.getElementById('list').innerHTML = data.map(i => `
+            document.getElementById('list').innerHTML = data.map(adm => `
                 <tr>
-                    <td><small>${i.user_id}</small></td>
-                    <td>${i.role}</td>
-                    <td><button onclick="del('${i.user_id}')" style="color:red; background:none; border:none; cursor:pointer;"><i class="fas fa-trash"></i></button></td>
+                    <td><small>${adm.user_id.substring(0,8)}...</small></td>
+                    <td><span style="background:#eee; padding:3px 8px; border-radius:5px;">${adm.role}</span></td>
+                    <td><button onclick="delAdmin('${adm.user_id}')" style="color:#dc3545; border:none; background:none; cursor:pointer;"><i class="fas fa-trash"></i></button></td>
                 </tr>`).join('');
         }
     }
 
-    async function saveAdmin() {
-        const email = document.getElementById('email').value;
+    async function handleAdmin() {
+        const email = document.getElementById('email').value.trim();
         const pass = document.getElementById('pass').value;
         const role = document.getElementById('role').value;
         const btn = document.getElementById('saveBtn');
         const msg = document.getElementById('msg');
 
+        if (!email) return;
         btn.disabled = true;
         msg.style.display = 'none';
 
-        // 1. محاولة إنشاء الحساب في Auth
-        const { data: auth, error: aErr } = await _sb.auth.signUp({ email, password: pass || "123456" });
+        // 1. محاولة إنشاء حساب جديد
+        const { data: auth, error: aErr } = await _sb.auth.signUp({ email, password: pass || "12345678" });
 
+        // 2. إذا كان البريد مسجلاً مسبقاً (خطأ 422)
         if (aErr && aErr.status === 422) {
-            msg.innerText = "⚠️ البريد مسجل مسبقاً. يرجى استخدام أمر SQL المذكور لربط الحساب بالصلاحيات.";
+            msg.innerText = "⚠️ البريد مسجل مسبقاً. يرجى تفعيله عبر أمر SQL Editor لربطه بجدول الصلاحيات.";
             msg.className = "alert error";
             msg.style.display = "block";
             btn.disabled = false;
@@ -90,34 +101,34 @@
         }
 
         if (auth?.user) {
-            // 2. إدراج الصلاحية بصيغة مصفوفة لحل خطأ 22P02
+            // 3. ربط الحساب الجديد بالصلاحيات كمصفوفة Array
             const { error: pErr } = await _sb.from('admin_permissions').insert([{
                 user_id: auth.user.id,
                 role: role,
-                permissions: ['full_access'] // إرسالها كمصفوفة لحل المشكلة
+                permissions: ['full_access'] // حل خطأ 22P02
             }]);
 
             if (pErr) {
-                msg.innerText = "خطأ في الصلاحيات: " + pErr.message;
+                msg.innerText = "فشل ربط الصلاحيات: " + pErr.message;
                 msg.className = "alert error";
             } else {
-                msg.innerText = "✅ تم بنجاح!";
+                msg.innerText = "✅ تم إنشاء الحساب ومنحه الصلاحيات!";
                 msg.className = "alert success";
-                load();
+                loadAdmins();
             }
             msg.style.display = "block";
         }
         btn.disabled = false;
     }
 
-    async function del(id) {
-        if(confirm("حذف الصلاحية؟")) {
-            await _sb.from('admin_permissions').delete().eq('user_id', id);
-            load();
+    async function delAdmin(id) {
+        if (confirm("هل أنت متأكد من سحب صلاحيات هذا المسؤول؟")) {
+            const { error } = await _sb.from('admin_permissions').delete().eq('user_id', id);
+            if (!error) loadAdmins();
         }
     }
 
-    window.onload = load;
+    window.onload = loadAdmins;
 </script>
 </body>
 </html>
