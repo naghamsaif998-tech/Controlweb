@@ -3,57 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>إدارة البلاغات | فلامنكو</title>
+    <title>إدارة البلاغات الاحترافية | فلامنكو</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        :root { --main: #d63384; --bg: #f5f5f5; --danger: #dc3545; --success: #28a745; --warning: #ffc107; }
+        :root { --main: #d63384; --bg: #f0f2f5; --card: #ffffff; --danger: #dc3545; --success: #28a745; --warning: #ffc107; }
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; padding: 15px; direction: rtl; }
-        .header { background: linear-gradient(135deg, var(--main), #9d174d); color: white; padding: 20px; text-align: center; border-radius: 15px; margin-bottom: 20px; }
-        .report-card { background: white; padding: 18px; border-radius: 15px; margin-bottom: 15px; border-right: 6px solid #ccc; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .report-card.pending { border-right-color: var(--warning); }
+        
+        .header { background: linear-gradient(135deg, var(--main), #9d174d); color: white; padding: 20px; text-align: center; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        
+        .report-card { background: var(--card); padding: 20px; border-radius: 15px; margin-bottom: 15px; border-right: 6px solid #ccc; box-shadow: 0 2px 8px rgba(0,0,0,0.05); position: relative; }
+        .report-card.pending { border-right-color: var(--danger); }
         .report-card.resolved { border-right-color: var(--success); opacity: 0.8; }
+        
+        .type-badge { font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: bold; margin-bottom: 10px; display: inline-block; }
+        .badge-story { background: #e0f2fe; color: #0369a1; }
+        .badge-comment { background: #fef2f2; color: #991b1b; }
+
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; background: #f8f9fa; padding: 12px; border-radius: 10px; font-size: 14px; }
+        .info-item b { color: var(--main); display: block; font-size: 11px; }
+
+        .reason-text { font-size: 16px; font-weight: bold; color: #333; margin: 5px 0; }
+        .details-text { font-size: 13px; color: #666; background: #fffbe6; padding: 8px; border-radius: 5px; border: 1px dashed #ffe58f; }
+
         .actions { display: flex; gap: 8px; margin-top: 15px; flex-wrap: wrap; }
-        .btn { padding: 10px; border: none; border-radius: 10px; cursor: pointer; color: white; flex: 1; font-weight: bold; }
-        .btn-ignore { background: #6c757d; }
-        .btn-warn { background: var(--warning); color: #333; }
+        .btn { flex: 1; padding: 10px; border: none; border-radius: 8px; cursor: pointer; color: white; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 13px; transition: 0.2s; }
+        .btn-ban { background: #000; }
+        .btn-resolve { background: var(--success); }
         .btn-delete { background: var(--danger); }
-        .alert { padding: 15px; border-radius: 10px; display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 90%; z-index: 10001; text-align: center; }
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        #loading { text-align: center; padding: 30px; color: var(--main); }
     </style>
 </head>
 <body>
-    <div id="alert-box" class="alert"></div>
-    <div class="header"><h1>إدارة البلاغات</h1></div>
-    <div id="loading" style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>
+
+    <div class="header">
+        <h1><i class="fas fa-shield-alt"></i> رقابة البلاغات</h1>
+    </div>
+
+    <div id="loading"><i class="fas fa-spinner fa-spin fa-2x"></i><p>جاري تحميل البلاغات الجديدة...</p></div>
     <div id="reports-list"></div>
 
     <script>
+        // إعدادات Supabase من صورك السابقة
         const SB_URL = "https://yboxheficowekfzjatti.supabase.co";
         const SB_KEY = "sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS";
         const _sb = supabase.createClient(SB_URL, SB_KEY);
 
         async function fetchReports() {
-            const { data, error } = await _sb.from('reports').select('*').order('created_at', { ascending: false });
-            if (error) return showAlert('خطأ في الجلب', 'error');
+            // جلب البلاغات مع ربط بيانات المُبلغ والمُبلغ ضده
+            // ملاحظة: استخدمنا 'reported_user_' كما يظهر في صور قاعدة بياناتك
+            const { data, error } = await _sb
+                .from('reports')
+                .select(`
+                    *,
+                    reporter:reporter_id ( username ),
+                    reported:reported_user_ ( id, username )
+                `)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error("خطأ:", error);
+                document.getElementById('reports-list').innerHTML = "<p style='text-align:center; color:red;'>فشل تحميل البيانات. تأكد من إعدادات PostgREST Schema.</p>";
+                return;
+            }
             renderReports(data);
             document.getElementById('loading').style.display = 'none';
         }
 
         function renderReports(reports) {
             const list = document.getElementById('reports-list');
-            if (!reports.length) { list.innerHTML = '<p style="text-align:center;">لا توجد بلاغات.</p>'; return; }
+            if (!reports.length) { list.innerHTML = '<p style="text-align:center;">لا توجد بلاغات حالياً.</p>'; return; }
             
-            list.innerHTML = reports.map(r => `
+            list.innerHTML = reports.map(r => {
+                const isComment = r.comment_id !== null;
+                const typeLabel = isComment ? "بلاغ عن تعليق" : "بلاغ عن رواية";
+                const typeClass = isComment ? "badge-comment" : "badge-story";
+
+                return `
                 <div class="report-card ${r.status}">
-                    <p><b>السبب:</b> ${r.reason}</p>
-                    <p><small>المُبلغ ضده: ${r.reported_user || 'غير محدد'}</small></p>
-                    <p><small>التاريخ: ${new Date(r.created_at).toLocaleDateString()}</small></p>
+                    <span class="type-badge ${typeClass}"><i class="fas ${isComment ? 'fa-comment' : 'fa-book'}"></i> ${typeLabel}</span>
+                    <div class="reason-text">${r.reason}</div>
+                    
+                    <div class="info-grid">
+                        <div class="info-item"><b>المُبلِغ:</b> ${r.reporter?.username || 'مستخدم مجهول'}</div>
+                        <div class="info-item"><b>المُبلغ ضده:</b> ${r.reported?.username || 'غير متوفر'}</div>
+                    </div>
+
+                    ${r.details ? `<div class="details-text"><b>التفاصيل:</b> ${r.details}</div>` : ''}
+                    
+                    <div style="font-size:11px; color:#888; margin-top:10px;">التاريخ: ${new Date(r.created_at).toLocaleString('ar-EG')}</div>
+
                     <div class="actions">
-                        <button class="btn btn-ignore" onclick="updateStatus('${r.id}', 'resolved')">تم الحل</button>
-                        <button class="btn btn-delete" onclick="deleteReport('${r.id}')">حذف البلاغ</button>
+                        <button class="btn btn-ban" onclick="handleQuickBan('${r.reported?.id}', '${r.reported?.username}')">
+                            <i class="fas fa-user-slash"></i> حظر المُخالف
+                        </button>
+
+                        <button class="btn btn-resolve" onclick="updateStatus('${r.id}', 'resolved')">
+                            <i class="fas fa-check"></i> حل
+                        </button>
+
+                        <button class="btn btn-delete" onclick="deleteReport('${r.id}')">
+                            <i class="fas fa-trash"></i> مسح
+                        </button>
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
+        }
+
+        // وظيفة الحظر السريع (10 أيام)
+        async function handleQuickBan(userId, username) {
+            if (!userId || userId === 'undefined') return alert("تعذر العثور على هوية المستخدم");
+            
+            const reason = prompt(`أدخل سبب حظر ${username}:`, "مخالفة سياسة المحتوى");
+            if (reason === null) return;
+
+            const expiry = new Date();
+            expiry.setDate(expiry.getDate() + 10);
+
+            // تحديث حالة المستخدم في جدول profiles
+            const { error } = await _sb.from('profiles').update({
+                is_banned: true,
+                banned_until: expiry.toISOString(),
+                ban_reason: reason
+            }).eq('id', userId);
+
+            if (!error) {
+                alert(`تم حظر ${username} لمدة 10 أيام بنجاح`);
+                fetchReports();
+            } else {
+                alert("حدث خطأ أثناء محاولة الحظر");
+            }
         }
 
         async function updateStatus(id, status) {
@@ -62,16 +144,10 @@
         }
 
         async function deleteReport(id) {
-            if(confirm("حذف سجل البلاغ؟")) {
+            if(confirm("حذف سجل البلاغ من القائمة؟")) {
                 await _sb.from('reports').delete().eq('id', id);
                 fetchReports();
             }
-        }
-
-        function showAlert(msg) {
-            const box = document.getElementById('alert-box');
-            box.style.display = 'block'; box.innerHTML = msg; box.style.background = '#fee2e2';
-            setTimeout(() => box.style.display = 'none', 3000);
         }
 
         window.onload = fetchReports;
