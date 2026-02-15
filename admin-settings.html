@@ -43,7 +43,8 @@
         .btn-delete { background: #fee2e2; color: #c62828; padding: 6px 10px; font-size: 12px; }
         
         #loading { text-align: center; padding: 40px; color: var(--main); }
-        select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; background: white; font-size: 15px; }
+        select, .pass-input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; background: white; font-size: 15px; margin-bottom: 15px; }
+        label { display:block; margin-bottom:8px; font-size:13px; font-weight:bold; color:#666; }
     </style>
 </head>
 <body>
@@ -52,7 +53,7 @@
 
     <div class="header">
         <h1><i class="fas fa-user-shield"></i> فريق العمل</h1>
-        <p style="margin:5px 0 0; font-size: 12px; opacity: 0.9;">تعيين المسؤولين وتحديد الصلاحيات</p>
+        <p style="margin:5px 0 0; font-size: 12px; opacity: 0.9;">تعيين المسؤولين وتحديد كلمات المرور</p>
     </div>
 
     <div id="loading"><i class="fas fa-spinner fa-spin fa-2x"></i><br><p>جاري التحميل...</p></div>
@@ -60,6 +61,8 @@
     <div id="main-content" style="display: none;">
         <div class="card">
             <div class="card-title"><i class="fas fa-user-plus"></i> إضافة مسؤول جديد</div>
+            
+            <label>البحث عن المستخدم:</label>
             <div class="search-box">
                 <input type="text" id="user-search" placeholder="ابحث باسم المستخدم..." oninput="searchUsers(this.value)">
                 <div id="user-suggestions"></div>
@@ -70,13 +73,17 @@
                 <input type="hidden" id="sel-uid">
             </div>
 
-            <label style="display:block; margin-bottom:8px; font-size:13px; font-weight:bold; color:#666;">اختر الدور الوظيفي:</label>
+            <label>كلمة مرور لوحة التحكم:</label>
+            <input type="password" id="admin-password-input" class="pass-input" placeholder="اكتب باسوورد للمسؤول هنا">
+
+            <label>اختر الدور الوظيفي:</label>
             <select id="role-select">
                 <option value="moderator">مشرف (Moderator)</option>
                 <option value="admin">مسؤول (Admin)</option>
                 <option value="super_admin">مدير عام (Super Admin)</option>
             </select>
 
+            <label>الصلاحيات:</label>
             <div class="permissions-grid">
                 <div class="perm-item"><input type="checkbox" class="perm-check" value="novels"> الروايات</div>
                 <div class="perm-item"><input type="checkbox" class="perm-check" value="users"> المستخدمين</div>
@@ -84,7 +91,7 @@
                 <div class="perm-item"><input type="checkbox" class="perm-check" value="admins"> الفريق</div>
             </div>
             
-            <button class="btn btn-primary" onclick="addAdmin()">حفظ وتعيين</button>
+            <button class="btn btn-primary" onclick="addAdmin()">حفظ وتعيين المسؤول</button>
         </div>
 
         <div class="card">
@@ -156,13 +163,27 @@
 
         async function addAdmin() {
             const uid = document.getElementById('sel-uid').value;
-            if (!uid) return alert("اختر مستخدماً أولاً");
+            const password = document.getElementById('admin-password-input').value.trim();
             const role = document.getElementById('role-select').value;
             const perms = Array.from(document.querySelectorAll('.perm-check:checked')).map(c => c.value);
             
-            const { error } = await _sb.from('admin_permissions').upsert({ user_id: uid, role: role, permissions: perms });
-            if (error) alert("خطأ: " + error.message);
-            else { alert("تم التعيين بنجاح"); fetchAdmins(); }
+            if (!uid) return alert("الرجاء اختيار مستخدم من البحث أولاً");
+            if (!password) return alert("الرجاء تعيين كلمة مرور لهذا المسؤول");
+
+            // حفظ البيانات بما فيها عمود الباسورد الجديد
+            const { error } = await _sb.from('admin_permissions').upsert({ 
+                user_id: uid, 
+                role: role, 
+                permissions: perms,
+                admin_password: password 
+            });
+
+            if (error) alert("خطأ أثناء الحفظ: " + error.message);
+            else { 
+                alert("✅ تم تعيين المسؤول وكلمة المرور بنجاح"); 
+                document.getElementById('admin-password-input').value = '';
+                fetchAdmins(); 
+            }
         }
 
         async function removeAdmin(uid) {
@@ -175,3 +196,4 @@
     </script>
 </body>
 </html>
+
