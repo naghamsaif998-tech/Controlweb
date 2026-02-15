@@ -46,34 +46,24 @@
       btn.disabled = true;
 
       try {
-        // 1. البحث عن المستخدم في جدول profiles للحصول على الـ ID الخاص به
-        const { data: profile, error: pErr } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('email', emailInput)
-          .single();
+        // نستخدم الـ RPC بدلاً من الاستعلام المباشر لتجنب خطأ 406
+        const { data, error } = await supabase.rpc('check_admin_login', {
+          p_email: emailInput,
+          p_password: passInput
+        });
 
-        if (!profile || pErr) {
-          showStatus("البريد غير مسجل كعضو في التطبيق", "error");
-          resetBtn(); return;
-        }
-
-        // 2. التحقق من وجوده في جدول admin_permissions ومطابقة الباسورد اليدوية
-        const { data: admin, error: aErr } = await supabase
-          .from('admin_permissions')
-          .select('role, admin_password')
-          .eq('user_id', profile.id)
-          .single();
-
-        if (admin && admin.admin_password === passInput) {
+        if (error) {
+          showStatus("خطأ في النظام: " + error.message, "error");
+          resetBtn();
+        } else if (data && data.length > 0) {
           // نجاح الدخول - تخزين بيانات الجلسة محلياً
-          localStorage.setItem('falaminko_admin_id', profile.id);
-          localStorage.setItem('falaminko_admin_role', admin.role);
+          localStorage.setItem('falaminko_admin_id', data[0].admin_id);
+          localStorage.setItem('falaminko_admin_role', data[0].admin_role);
           
           showStatus("✅ تم التحقق بنجاح، جاري التحويل...", "success");
           setTimeout(() => window.location.replace('index.html'), 1000);
         } else {
-          showStatus("❌ خطأ في كلمة المرور أو ليس لديك صلاحية أدمن", "error");
+          showStatus("❌ البريد أو كلمة المرور غير صحيحة", "error");
           resetBtn();
         }
       } catch (err) {
@@ -95,3 +85,4 @@
   </script>
 </body>
 </html>
+
