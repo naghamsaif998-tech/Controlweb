@@ -3,16 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>فلامنكو | دخول الإدارة</title>
+  <title>فلامنكو | تسجيل دخول الإدارة</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
   <style>
     :root { --primary: #d63384; --bg: #f0f2f5; --card: #ffffff; }
     body { background: var(--bg); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-    .container { background: var(--card); padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; }
-    h2 { color: var(--primary); margin-bottom: 25px; font-size: 22px; }
-    input { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 12px; text-align: center; font-size: 16px; outline: none; }
-    button { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.3s; }
-    button:disabled { background: #ccc; }
+    .container { background: var(--card); padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; }
+    h2 { color: var(--primary); margin-bottom: 20px; font-size: 22px; }
+    input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 12px; box-sizing: border-box; text-align: right; font-size: 15px; outline: none; }
+    input:focus { border-color: var(--primary); }
+    button { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.2s; }
     #status { margin-top: 15px; padding: 10px; border-radius: 10px; font-size: 14px; display: none; }
     .error { background: #fee2e2; color: #dc2626; display: block; }
     .success { background: #dcfce7; color: #16a34a; display: block; }
@@ -20,11 +20,11 @@
 </head>
 <body>
 
-  <div class="container">
-    <h2>دخول لوحة التحكم</h2>
-    <p style="color: #666; margin-bottom: 20px;">أدخل بريدك الإلكتروني لتلقي رابط الدخول</p>
-    <input type="email" id="adminEmail" placeholder="example@gmail.com">
-    <button id="loginBtn" onclick="handleMagicLink()">إرسال رابط الدخول</button>
+  <div id="loginSection" class="container">
+    <h2>تسجيل دخول الإدارة (فلامنكو)</h2>
+    <input type="email" id="email" placeholder="بريد المسؤول">
+    <input type="password" id="pass" placeholder="كلمة المرور">
+    <button id="loginBtn" onclick="handleLogin()">دخول آمن</button>
     <div id="status"></div>
   </div>
 
@@ -34,44 +34,44 @@
       'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS'
     );
 
-    async function handleMagicLink() {
-      const email = document.getElementById('adminEmail').value.trim();
+    async function handleLogin() {
+      const email = document.getElementById('email').value.trim();
+      const pass = document.getElementById('pass').value.trim();
       const btn = document.getElementById('loginBtn');
-      if(!email) return showStatus("يرجى كتابة البريد الإلكتروني", "error");
 
+      if(!email || !pass) return showStatus("يرجى ملء الحقول", "error");
+
+      btn.innerText = "جاري التحقق...";
       btn.disabled = true;
-      btn.innerText = "جاري الإرسال...";
 
-      const { error } = await supabase.auth.signInWithOtp({
-        email: email,
-        options: {
-          // هذا السطر يضمن أن الرابط في الإيميل يفتح لوحة التحكم حصراً
-          emailRedirectTo: 'https://controlweb.vercel.app/admin-login.html'
-        }
-      });
-
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+      
       if (error) {
-        showStatus("خطأ: " + error.message, "error");
+        showStatus("خطأ في الدخول: " + error.message, "error");
+        btn.innerText = "دخول آمن";
         btn.disabled = false;
-        btn.innerText = "إرسال رابط الدخول";
-      } else {
-        showStatus("✅ تم إرسال رابط الدخول إلى بريدك. افحص صندوق الوارد (أو الـ Spam)", "success");
+        return;
       }
+      
+      // بمجرد نجاح تسجيل الدخول، نتحقق من الصلاحيات ونوجهه للصفحة الرئيسية
+      verifyAdmin(data.user.id);
     }
 
-    // فحص الصلاحية فور الضغط على الرابط والعودة للصفحة
-    async function checkAdminOnReturn() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        // التحقق من أن الإيميل هو أدمن عبر RPC (لتخطي خطأ 406)
-        const { data: role } = await supabase.rpc('get_admin_role', { p_user_id: session.user.id });
-        
-        if (role === 'admin') {
-          window.location.replace('index.html');
-        } else {
-          showStatus("⛔ هذا الحساب لا يملك صلاحيات مسؤول", "error");
-          await supabase.auth.signOut();
-        }
+    async function verifyAdmin(userId) {
+      const { data, error } = await supabase
+        .from('admin_permissions')
+        .select('role')
+        .eq('user_id', userId)
+        .single();
+
+      if (data?.role === 'admin') {
+        // التوجيه للصفحة الرئيسية التي بها القائمة الجانبية
+        window.location.replace('index.html'); 
+      } else {
+        showStatus("⛔ عذراً، لا تملك صلاحية الإدارة", "error");
+        await supabase.auth.signOut();
+        document.getElementById('loginBtn').disabled = false;
+        document.getElementById('loginBtn').innerText = "دخول آمن";
       }
     }
 
@@ -79,8 +79,6 @@
       const s = document.getElementById('status');
       s.innerText = msg; s.className = type; s.style.display = "block";
     }
-
-    checkAdminOnReturn();
   </script>
 </body>
 </html>
