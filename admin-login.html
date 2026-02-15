@@ -3,28 +3,37 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>فلامنكو | دخول الإدارة</title>
+  <title>فلامنكو | تسجيل دخول الإدارة</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
   <style>
     :root { --primary: #d63384; --bg: #f0f2f5; --card: #ffffff; }
     body { background: var(--bg); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
     .container { background: var(--card); padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; }
     h2 { color: var(--primary); margin-bottom: 25px; font-size: 22px; }
-    .google-btn { width: 100%; padding: 14px; background: white; color: #444; border: 1px solid #ddd; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.2s; }
-    .google-btn:hover { background: #f8f8f8; }
+    .google-btn { 
+      width: 100%; padding: 14px; background: white; color: #444; 
+      border: 1px solid #ddd; border-radius: 12px; cursor: pointer; 
+      font-weight: bold; font-size: 16px; display: flex; 
+      align-items: center; justify-content: center; gap: 10px; 
+      transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+    }
+    .google-btn:hover { background: #f8f8f8; transform: translateY(-1px); }
     #status { margin-top: 15px; padding: 10px; border-radius: 10px; font-size: 14px; display: none; }
     .error { background: #fee2e2; color: #dc2626; display: block; }
+    .success { background: #dcfce7; color: #16a34a; display: block; }
   </style>
 </head>
 <body>
 
   <div class="container">
     <h2>لوحة تحكم فلامنكو</h2>
-    <p style="color: #666; margin-bottom: 20px;">سجل دخولك باستخدام حساب الإدارة</p>
-    <button class="google-btn" onclick="handleGoogleLogin()">
+    <p style="color: #666; margin-bottom: 20px;">دخول آمن للمسؤولين فقط</p>
+    
+    <button class="google-btn" id="loginBtn" onclick="handleGoogleLogin()">
       <img src="https://www.google.com/favicon.ico" width="20">
-      الدخول عبر Google
+      تسجيل الدخول عبر Google
     </button>
+    
     <div id="status"></div>
   </div>
 
@@ -34,35 +43,35 @@
       'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS'
     );
 
-    // 1. بدء عملية الدخول عبر جوجل
+    // 1. الدخول عبر جوجل مع توجيه الرابط لاسم الصفحة الحالي
     async function handleGoogleLogin() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          // تأكدي من وضع الرابط الصحيح لموقعك هنا
-          redirectTo: window.location.origin + '/login.html' 
+          // الرابط مطابق لاسم ملفك الحالي
+          redirectTo: 'https://controlweb.vercel.app/admin-login.html' 
         }
       });
-      if (error) showStatus("خطأ: " + error.message, "error");
+      if (error) showStatus("خطأ في الاتصال: " + error.message, "error");
     }
 
-    // 2. التحقق من العودة من جوجل (تم الدخول أم لا)
-    async function checkSession() {
+    // 2. فحص الهوية فور العودة من جوجل
+    async function checkAdminAccess() {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session) {
-        // نستخدم الـ RPC لتخطي خطأ 406 المنع
-        const { data: role, error } = await supabase.rpc('get_admin_role', { 
+        showStatus("جاري التحقق من الصلاحيات...", "success");
+        
+        // استخدام RPC لتخطي خطأ 406 المنع الظاهر في صورك
+        const { data: role, error: rpcError } = await supabase.rpc('get_admin_role', { 
           p_user_id: session.user.id 
         });
 
         if (role === 'admin') {
-          window.location.replace('index.html');
-        } else if (role) {
-          showStatus("⛔ ليس لديك صلاحية أدمن (رتبتك: " + role + ")", "error");
-          await supabase.auth.signOut();
+          showStatus("✅ تم التحقق، جاري توجيهك للوحة التحكم...", "success");
+          setTimeout(() => window.location.replace('index.html'), 1000);
         } else {
-          showStatus("⛔ حسابك غير مسجل في قائمة المديرين", "error");
+          showStatus("⛔ عذراً، هذا الحساب لا يملك صلاحيات مسؤول", "error");
           await supabase.auth.signOut();
         }
       }
@@ -73,8 +82,8 @@
       s.innerText = msg; s.className = type; s.style.display = "block";
     }
 
-    // تشغيل التحقق عند تحميل الصفحة
-    checkSession();
+    // استدعاء الفحص عند تحميل الصفحة
+    checkAdminAccess();
   </script>
 </body>
 </html>
