@@ -3,28 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>فلامنكو | تسجيل دخول الإدارة</title>
+  <title>فلامنكو | دخول الإدارة</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
   <style>
     :root { --primary: #d63384; --bg: #f0f2f5; --card: #ffffff; }
     body { background: var(--bg); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-    .container { background: var(--card); padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; }
-    h2 { color: var(--primary); margin-bottom: 20px; font-size: 22px; }
-    input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 12px; box-sizing: border-box; text-align: right; font-size: 15px; outline: none; }
-    input:focus { border-color: var(--primary); }
-    button { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.2s; }
+    .container { background: var(--card); padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; }
+    h2 { color: var(--primary); margin-bottom: 25px; font-size: 22px; }
+    .google-btn { width: 100%; padding: 14px; background: white; color: #444; border: 1px solid #ddd; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.2s; }
+    .google-btn:hover { background: #f8f8f8; }
     #status { margin-top: 15px; padding: 10px; border-radius: 10px; font-size: 14px; display: none; }
     .error { background: #fee2e2; color: #dc2626; display: block; }
-    .success { background: #dcfce7; color: #16a34a; display: block; }
   </style>
 </head>
 <body>
 
-  <div id="loginSection" class="container">
-    <h2>تسجيل دخول الإدارة (فلامنكو)</h2>
-    <input type="email" id="email" placeholder="بريد المسؤول">
-    <input type="password" id="pass" placeholder="كلمة المرور">
-    <button id="loginBtn" onclick="handleLogin()">دخول آمن</button>
+  <div class="container">
+    <h2>لوحة تحكم فلامنكو</h2>
+    <p style="color: #666; margin-bottom: 20px;">سجل دخولك باستخدام حساب الإدارة</p>
+    <button class="google-btn" onclick="handleGoogleLogin()">
+      <img src="https://www.google.com/favicon.ico" width="20">
+      الدخول عبر Google
+    </button>
     <div id="status"></div>
   </div>
 
@@ -34,44 +34,37 @@
       'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS'
     );
 
-    async function handleLogin() {
-      const email = document.getElementById('email').value.trim();
-      const pass = document.getElementById('pass').value.trim();
-      const btn = document.getElementById('loginBtn');
-
-      if(!email || !pass) return showStatus("يرجى ملء الحقول", "error");
-
-      btn.innerText = "جاري التحقق...";
-      btn.disabled = true;
-
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
-      
-      if (error) {
-        showStatus("خطأ في الدخول: " + error.message, "error");
-        btn.innerText = "دخول آمن";
-        btn.disabled = false;
-        return;
-      }
-      
-      // بمجرد نجاح تسجيل الدخول، نتحقق من الصلاحيات ونوجهه للصفحة الرئيسية
-      verifyAdmin(data.user.id);
+    // 1. بدء عملية الدخول عبر جوجل
+    async function handleGoogleLogin() {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          // تأكدي من وضع الرابط الصحيح لموقعك هنا
+          redirectTo: window.location.origin + '/login.html' 
+        }
+      });
+      if (error) showStatus("خطأ: " + error.message, "error");
     }
 
-    async function verifyAdmin(userId) {
-      const { data, error } = await supabase
-        .from('admin_permissions')
-        .select('role')
-        .eq('user_id', userId)
-        .single();
+    // 2. التحقق من العودة من جوجل (تم الدخول أم لا)
+    async function checkSession() {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        // نستخدم الـ RPC لتخطي خطأ 406 المنع
+        const { data: role, error } = await supabase.rpc('get_admin_role', { 
+          p_user_id: session.user.id 
+        });
 
-      if (data?.role === 'admin') {
-        // التوجيه للصفحة الرئيسية التي بها القائمة الجانبية
-        window.location.replace('index.html'); 
-      } else {
-        showStatus("⛔ عذراً، لا تملك صلاحية الإدارة", "error");
-        await supabase.auth.signOut();
-        document.getElementById('loginBtn').disabled = false;
-        document.getElementById('loginBtn').innerText = "دخول آمن";
+        if (role === 'admin') {
+          window.location.replace('index.html');
+        } else if (role) {
+          showStatus("⛔ ليس لديك صلاحية أدمن (رتبتك: " + role + ")", "error");
+          await supabase.auth.signOut();
+        } else {
+          showStatus("⛔ حسابك غير مسجل في قائمة المديرين", "error");
+          await supabase.auth.signOut();
+        }
       }
     }
 
@@ -79,6 +72,9 @@
       const s = document.getElementById('status');
       s.innerText = msg; s.className = type; s.style.display = "block";
     }
+
+    // تشغيل التحقق عند تحميل الصفحة
+    checkSession();
   </script>
 </body>
 </html>
