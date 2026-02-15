@@ -27,11 +27,11 @@
 
   <div class="container">
     <h2>لوحة تحكم فلامنكو</h2>
-    <p style="color: #666; margin-bottom: 20px;">دخول آمن للمسؤولين فقط</p>
+    <p style="color: #666; margin-bottom: 20px;">تسجيل الدخول للمسؤولين</p>
     
     <button class="google-btn" id="loginBtn" onclick="handleGoogleLogin()">
       <img src="https://www.google.com/favicon.ico" width="20">
-      تسجيل الدخول عبر Google
+      دخول عبر حساب Google
     </button>
     
     <div id="status"></div>
@@ -43,35 +43,41 @@
       'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS'
     );
 
-    // 1. الدخول عبر جوجل مع توجيه الرابط لاسم الصفحة الحالي
+    // الرابط الثابت للوحة التحكم لضمان عدم الذهاب للتطبيق
+    const ADMIN_URL = 'https://controlweb.vercel.app/admin-login.html';
+
     async function handleGoogleLogin() {
+      showStatus("جاري الاتصال بـ Google...", "success");
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          // الرابط مطابق لاسم ملفك الحالي
-          redirectTo: 'https://controlweb.vercel.app/admin-login.html' 
+          // السطر التالي هو الأهم لمنع الذهاب للتطبيق
+          redirectTo: ADMIN_URL,
+          queryParams: { prompt: 'select_account' } // يجبر جوجل على إظهار اختيار الحسابات
         }
       });
-      if (error) showStatus("خطأ في الاتصال: " + error.message, "error");
+      
+      if (error) showStatus("خطأ: " + error.message, "error");
     }
 
-    // 2. فحص الهوية فور العودة من جوجل
     async function checkAdminAccess() {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session) {
-        showStatus("جاري التحقق من الصلاحيات...", "success");
+        showStatus("جاري التحقق من رتبة المسؤول...", "success");
         
-        // استخدام RPC لتخطي خطأ 406 المنع الظاهر في صورك
-        const { data: role, error: rpcError } = await supabase.rpc('get_admin_role', { 
+        // استخدام RPC لتخطي خطأ 406 المنع
+        const { data: role, error } = await supabase.rpc('get_admin_role', { 
           p_user_id: session.user.id 
         });
 
         if (role === 'admin') {
-          showStatus("✅ تم التحقق، جاري توجيهك للوحة التحكم...", "success");
+          showStatus("✅ تم التحقق، جاري فتح اللوحة...", "success");
           setTimeout(() => window.location.replace('index.html'), 1000);
         } else {
-          showStatus("⛔ عذراً، هذا الحساب لا يملك صلاحيات مسؤول", "error");
+          showStatus("⛔ هذا الحساب ليس له صلاحية مسؤول (Admin)", "error");
+          // تسجيل الخروج فوراً إذا لم يكن أدمن لمنع التعليق في التطبيق
           await supabase.auth.signOut();
         }
       }
@@ -82,7 +88,7 @@
       s.innerText = msg; s.className = type; s.style.display = "block";
     }
 
-    // استدعاء الفحص عند تحميل الصفحة
+    // فحص الدخول فور العودة من جوجل
     checkAdminAccess();
   </script>
 </body>
