@@ -3,21 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>فلامنكو | تسجيل دخول الإدارة</title>
+  <title>فلامنكو | دخول الإدارة</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
   <style>
     :root { --primary: #d63384; --bg: #f0f2f5; --card: #ffffff; }
     body { background: var(--bg); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
     .container { background: var(--card); padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; }
     h2 { color: var(--primary); margin-bottom: 25px; font-size: 22px; }
-    .google-btn { 
-      width: 100%; padding: 14px; background: white; color: #444; 
-      border: 1px solid #ddd; border-radius: 12px; cursor: pointer; 
-      font-weight: bold; font-size: 16px; display: flex; 
-      align-items: center; justify-content: center; gap: 10px; 
-      transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
-    }
-    .google-btn:hover { background: #f8f8f8; transform: translateY(-1px); }
+    input { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 12px; text-align: center; font-size: 16px; outline: none; }
+    button { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.3s; }
+    button:disabled { background: #ccc; }
     #status { margin-top: 15px; padding: 10px; border-radius: 10px; font-size: 14px; display: none; }
     .error { background: #fee2e2; color: #dc2626; display: block; }
     .success { background: #dcfce7; color: #16a34a; display: block; }
@@ -26,14 +21,10 @@
 <body>
 
   <div class="container">
-    <h2>لوحة تحكم فلامنكو</h2>
-    <p style="color: #666; margin-bottom: 20px;">تسجيل الدخول للمسؤولين</p>
-    
-    <button class="google-btn" id="loginBtn" onclick="handleGoogleLogin()">
-      <img src="https://www.google.com/favicon.ico" width="20">
-      دخول عبر حساب Google
-    </button>
-    
+    <h2>دخول لوحة التحكم</h2>
+    <p style="color: #666; margin-bottom: 20px;">أدخل بريدك الإلكتروني لتلقي رابط الدخول</p>
+    <input type="email" id="adminEmail" placeholder="example@gmail.com">
+    <button id="loginBtn" onclick="handleMagicLink()">إرسال رابط الدخول</button>
     <div id="status"></div>
   </div>
 
@@ -43,41 +34,42 @@
       'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS'
     );
 
-    // الرابط الثابت للوحة التحكم لضمان عدم الذهاب للتطبيق
-    const ADMIN_URL = 'https://controlweb.vercel.app/admin-login.html';
+    async function handleMagicLink() {
+      const email = document.getElementById('adminEmail').value.trim();
+      const btn = document.getElementById('loginBtn');
+      if(!email) return showStatus("يرجى كتابة البريد الإلكتروني", "error");
 
-    async function handleGoogleLogin() {
-      showStatus("جاري الاتصال بـ Google...", "success");
-      
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
+      btn.disabled = true;
+      btn.innerText = "جاري الإرسال...";
+
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email,
         options: {
-          // السطر التالي هو الأهم لمنع الذهاب للتطبيق
-          redirectTo: ADMIN_URL,
-          queryParams: { prompt: 'select_account' } // يجبر جوجل على إظهار اختيار الحسابات
+          // هذا السطر يضمن أن الرابط في الإيميل يفتح لوحة التحكم حصراً
+          emailRedirectTo: 'https://controlweb.vercel.app/admin-login.html'
         }
       });
-      
-      if (error) showStatus("خطأ: " + error.message, "error");
+
+      if (error) {
+        showStatus("خطأ: " + error.message, "error");
+        btn.disabled = false;
+        btn.innerText = "إرسال رابط الدخول";
+      } else {
+        showStatus("✅ تم إرسال رابط الدخول إلى بريدك. افحص صندوق الوارد (أو الـ Spam)", "success");
+      }
     }
 
-    async function checkAdminAccess() {
+    // فحص الصلاحية فور الضغط على الرابط والعودة للصفحة
+    async function checkAdminOnReturn() {
       const { data: { session } } = await supabase.auth.getSession();
-      
       if (session) {
-        showStatus("جاري التحقق من رتبة المسؤول...", "success");
+        // التحقق من أن الإيميل هو أدمن عبر RPC (لتخطي خطأ 406)
+        const { data: role } = await supabase.rpc('get_admin_role', { p_user_id: session.user.id });
         
-        // استخدام RPC لتخطي خطأ 406 المنع
-        const { data: role, error } = await supabase.rpc('get_admin_role', { 
-          p_user_id: session.user.id 
-        });
-
         if (role === 'admin') {
-          showStatus("✅ تم التحقق، جاري فتح اللوحة...", "success");
-          setTimeout(() => window.location.replace('index.html'), 1000);
+          window.location.replace('index.html');
         } else {
-          showStatus("⛔ هذا الحساب ليس له صلاحية مسؤول (Admin)", "error");
-          // تسجيل الخروج فوراً إذا لم يكن أدمن لمنع التعليق في التطبيق
+          showStatus("⛔ هذا الحساب لا يملك صلاحيات مسؤول", "error");
           await supabase.auth.signOut();
         }
       }
@@ -88,8 +80,7 @@
       s.innerText = msg; s.className = type; s.style.display = "block";
     }
 
-    // فحص الدخول فور العودة من جوجل
-    checkAdminAccess();
+    checkAdminOnReturn();
   </script>
 </body>
 </html>
