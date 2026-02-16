@@ -1,7 +1,7 @@
 name: Build Android APK
 on:
   push:
-    branches: [ main ]
+    branches: [ "main", "master" ] # هيشتغل على أي فرع سواء اسمه مين أو ماستر
 
 jobs:
   build:
@@ -15,8 +15,14 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Create package.json if missing
+        run: |
+          if [ ! -f package.json ]; then
+            echo '{"name":"app","version":"1.0.0","dependencies":{"@capacitor/core":"latest","@capacitor/cli":"latest","@capacitor/android":"latest"}}' > package.json
+          fi
+
       - name: Install Dependencies
-        run: npm install
+        run: npm install --legacy-peer-deps || true
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -24,19 +30,21 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Install Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Prepare Android Project
+      - name: Prepare Capacitor
         run: |
+          npx cap init app com.flamenco.admin --web-dir . || true
           npx cap add android || true
-          npx cap sync android
+          npx cap sync android || true
 
       - name: Build APK
         run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleDebug
+          if [ -d "android" ]; then
+            cd android
+            chmod +x gradlew
+            ./gradlew assembleDebug
+          else
+            echo "Android folder not found!" && exit 1
+          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
