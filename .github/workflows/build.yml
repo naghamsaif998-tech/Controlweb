@@ -29,7 +29,7 @@ jobs:
 
       - name: Prepare Android Project
         run: |
-          npx cap add android
+          npx cap add android || true
           npx cap sync android
 
       - name: Build APK
