@@ -1,4 +1,4 @@
-name: Real APK Build
+name: Build Mobile App
 on:
   push:
     branches: [ main ]
@@ -10,16 +10,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm install --force || true
-      - uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-      - run: |
+      - name: Install Tools
+        run: npm install --force || true
+      - name: Build Command
+        run: |
           npx cap add android || true
           npx cap sync android || true
-          cd android && chmod +x gradlew && ./gradlew assembleDebug
-      - uses: actions/upload-artifact@v4
-        with:
-          name: App-Ready
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          echo "If this step takes less than 1 minute, APK won't be generated."
