@@ -1,10 +1,6 @@
-- name: Prepare web files
-  run: |
-    mkdir -p www
-    cp *.html www/         # انسخ كل ملفات HTML
-    cp -r assets www/      # انسخ مجلد assets إذا كان موجوداً
-- name: Generate APK File
-  run: |
-    npx cap add android || true
-    npx cap sync android
-    cd android && chmod +x gradlew && ./gradlew assembleDebug
+{
+  "appId": "com.flamenco.admin",
+  "appName": "Flamenco Admin",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}
