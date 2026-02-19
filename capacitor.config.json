@@ -1,0 +1,7 @@
+{
+  "appId": "com.flamenco.app",
+  "appName": "Flamenco",
+  "webDir": ".",
+  "bundledWebRuntime": false
+}
+
