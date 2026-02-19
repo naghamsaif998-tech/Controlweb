@@ -1,39 +1,25 @@
 name: Build Mobile App
-
 on:
   push:
     branches: [ main ]
-
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
+      
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install dependencies
-        run: npm install --force || true
+      - name: Install Dependencies
+        run: npm install
 
-      - name: Prepare web assets (copy to www folder)
+      - name: Create Android Shell (The Wrapper)
         run: |
-          mkdir -p www
-          # نسخ كل الملفات والمجلدات إلى www مع استثناءات:
-          # - .git, .github, node_modules, android (مجلدات)
-          # - package.json, package-lock.json, capacitor.config.json (ملفات التكوين)
-          rsync -av --exclude='.git' \
-                    --exclude='.github' \
-                    --exclude='node_modules' \
-                    --exclude='android' \
-                    --exclude='package.json' \
-                    --exclude='package-lock.json' \
-                    --exclude='capacitor.config.json' \
-                    ./ www/
+          npx cap add android
+          npx cap sync android
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -41,14 +27,14 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Generate APK file
+      - name: Generate APK File
         run: |
-          npx cap add android || true
-          npx cap sync android
-          cd android && chmod +x gradlew && ./gradlew assembleDebug
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: App-Final-File
+          name: Flamenco-Release-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
