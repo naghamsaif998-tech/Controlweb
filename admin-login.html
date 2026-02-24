@@ -10,20 +10,33 @@
     body { background: var(--bg); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
     .container { background: var(--card); padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; }
     h2 { color: var(--primary); margin-bottom: 20px; font-size: 22px; }
-    input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 12px; box-sizing: border-box; text-align: right; font-size: 15px; outline: none; }
-    input:focus { border-color: var(--primary); }
-    button { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.2s; }
+    .input-group { text-align: right; margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-size: 13px; color: #666; font-weight: bold; }
+    input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 12px; box-sizing: border-box; text-align: right; font-size: 15px; outline: none; transition: 0.3s; }
+    input:focus { border-color: var(--primary); box-shadow: 0 0 5px rgba(214, 51, 132, 0.1); }
+    button { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.2s; margin-top: 10px; }
+    button:hover { opacity: 0.9; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
     #status { margin-top: 15px; padding: 10px; border-radius: 10px; font-size: 14px; display: none; }
-    .error { background: #fee2e2; color: #dc2626; display: block; }
-    .success { background: #dcfce7; color: #16a34a; display: block; }
+    .error { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+    .success { background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; }
   </style>
 </head>
 <body>
 
   <div id="loginSection" class="container">
-    <h2>تسجيل دخول الإدارة (فلامنكو)</h2>
-    <input type="email" id="email" placeholder="بريد المسؤول">
-    <input type="password" id="pass" placeholder="كلمة مرور الإدارة">
+    <h2>مدخل الإدارة (فلامنكو)</h2>
+    
+    <div class="input-group">
+      <label>بريد المسؤول:</label>
+      <input type="email" id="email" placeholder="example@mail.com">
+    </div>
+
+    <div class="input-group">
+      <label>كلمة مرور الإدارة:</label>
+      <input type="password" id="pass" placeholder="••••••••">
+    </div>
+
     <button id="loginBtn" onclick="handleLogin()">دخول آمن</button>
     <div id="status"></div>
   </div>
@@ -38,47 +51,53 @@
       const emailInput = document.getElementById('email').value.trim();
       const passInput = document.getElementById('pass').value.trim();
       const btn = document.getElementById('loginBtn');
+      const statusDiv = document.getElementById('status');
 
-      if(!emailInput || !passInput) return showStatus("يرجى ملء الحقول", "error");
+      if(!emailInput || !passInput) {
+          return showStatus("يرجى إدخال البريد وكلمة المرور", "error");
+      }
 
-      btn.innerText = "جاري التحقق من الصلاحيات...";
+      btn.innerText = "جاري التحقق...";
       btn.disabled = true;
+      statusDiv.style.display = "none";
 
       try {
-        // 1. البحث في جدول البروفايلات لجلب الـ ID عن طريق البريد
+        // 1. جلب ID المستخدم من جدول البروفايلات (Profiles)
+        // ملاحظة: تأكدي أن عمود الإيميل في Supabase اسمه email
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('id')
+          .select('id, username')
           .eq('email', emailInput)
           .single();
 
         if (profileError || !profile) {
-          throw new Error("عذراً، هذا البريد غير مسجل كمسؤول");
+          throw new Error("هذا البريد غير مسجل في النظام كمسؤول");
         }
 
-        // 2. التحقق من كلمة مرور الإدارة في جدول admin_permissions
+        // 2. التحقق من تطابق كلمة السر في جدول admin_permissions
         const { data: adminData, error: adminError } = await supabase
           .from('admin_permissions')
-          .select('role, admin_password')
+          .select('role, admin_password, permissions')
           .eq('user_id', profile.id)
           .single();
 
         if (adminError || !adminData) {
-          throw new Error("ليس لديك صلاحيات دخول الإدارة");
+          throw new Error("لا توجد صلاحيات إدارة مرتبطة بهذا الحساب");
         }
 
-        // 3. مطابقة كلمة المرور المدخلة مع المخزنة (Plain Text كما في صورتك)
+        // 3. مقارنة كلمة المرور اليدوية (المخزنة كـ Plain Text في عمود admin_password)
         if (adminData.admin_password === passInput) {
-            showStatus("تم تسجيل الدخول بنجاح! جاري التوجيه...", "success");
+            showStatus("أهلاً بك " + profile.username + ".. جاري الدخول", "success");
             
-            // تخزين جلسة عمل مؤقتة في المتصفح
-            localStorage.setItem('admin_role', adminData.role);
-            localStorage.setItem('admin_user_id', profile.id);
+            // تخزين بيانات الجلسة محلياً لسهولة التنقل
+            localStorage.setItem('f_admin_id', profile.id);
+            localStorage.setItem('f_admin_role', adminData.role);
+            localStorage.setItem('f_admin_user', profile.username);
 
-            // التوجيه لصفحة التحكم الرئيسية
+            // التوجيه لصفحة التحكم الرئيسية بعد ثانية واحدة
             setTimeout(() => {
                 window.location.replace('index.html'); 
-            }, 1000);
+            }, 1200);
         } else {
             throw new Error("كلمة مرور الإدارة غير صحيحة");
         }
@@ -92,8 +111,11 @@
 
     function showStatus(msg, type) {
       const s = document.getElementById('status');
-      s.innerText = msg; s.className = type; s.style.display = "block";
+      s.innerText = msg;
+      s.className = type;
+      s.style.display = "block";
     }
   </script>
 </body>
 </html>
+
