@@ -1,70 +1,236 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <title>إدارة فريق العمل | فلامنكو</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        :root { --main: #d63384; --bg: #f8f9fa; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); padding: 20px; direction: rtl; }
-        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
-        input, select { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        .btn { background: var(--main); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; cursor: pointer; font-weight: bold; }
-        #status { margin-top: 10px; font-size: 14px; text-align: center; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>فلامنكو | إعدادات الإدارة</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
+  <style>
+    :root { --primary: #d63384; --bg: #f0f2f5; --card: #ffffff; --text: #333; }
+    body { background: var(--bg); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; color: var(--text); }
+    
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: var(--card); padding: 15px 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+    .header h2 { margin: 0; color: var(--primary); }
+    .logout-btn { background: #dc2626; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+
+    .grid-container { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; max-width: 1200px; margin: 0 auto; }
+    
+    .card { background: var(--card); padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+    .card h3 { margin-top: 0; color: var(--primary); border-bottom: 2px solid #fce7f3; padding-bottom: 10px; margin-bottom: 20px; }
+
+    /* Form Styles */
+    label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
+    input, select { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 14px; outline: none; transition: 0.3s; }
+    input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(214, 51, 132, 0.1); }
+    
+    button.action-btn { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 15px; }
+    button.action-btn:hover { background: #be185d; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+
+    /* Table Styles */
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 12px; text-align: right; border-bottom: 1px solid #eee; font-size: 14px; }
+    th { color: var(--primary); font-weight: bold; }
+    tr:last-child td { border-bottom: none; }
+    .badge { padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; }
+    .badge-admin { background: #dcfce7; color: #166534; }
+    .badge-moderator { background: #dbeafe; color: #1e40af; }
+
+    #status { margin-top: 15px; padding: 10px; border-radius: 8px; font-size: 13px; display: none; text-align: center; }
+    .error { background: #fee2e2; color: #dc2626; }
+    .success { background: #dcfce7; color: #16a34a; }
+
+    @media (max-width: 768px) { .grid-container { grid-template-columns: 1fr; } }
+  </style>
 </head>
 <body>
 
+  <div class="header">
+    <h2>⚙️ إدارة المشرفين (فلامنكو)</h2>
+    <button class="logout-btn" onclick="logout()">تسجيل خروج</button>
+  </div>
+
+  <div class="grid-container">
     <div class="card">
-        <h3>تعيين مسؤول جديد</h3>
-        <input type="text" id="user-email" placeholder="بريد المستخدم (يجب أن يكون مسجلاً)">
-        <input type="password" id="admin-pass" placeholder="كلمة مرور دخول الإدارة">
-        <select id="role-select">
-            <option value="admin">مسؤول (Admin)</option>
-            <option value="moderator">مشرف (Moderator)</option>
+      <h3>إضافة مشرف جديد</h3>
+      <form id="addAdminForm" onsubmit="event.preventDefault(); addAdmin();">
+        
+        <label>البريد الإلكتروني</label>
+        <input type="email" id="newEmail" placeholder="example@flamenco.com" required>
+
+        <label>كلمة المرور</label>
+        <input type="text" id="newPass" placeholder="تعيين كلمة مرور قوية" required>
+
+        <label>الصلاحية (Role)</label>
+        <select id="newRole">
+          <option value="moderator">مشرف (Moderator)</option>
+          <option value="admin">مدير عام (Admin)</option>
         </select>
-        <button class="btn" onclick="saveAdmin()">حفظ البيانات</button>
+
+        <button type="submit" id="addBtn" class="action-btn">إضافة المشرف</button>
         <div id="status"></div>
+      </form>
     </div>
 
-    <script>
-        const _sb = supabase.createClient('https://yboxheficowekfzjatti.supabase.co', 'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS');
+    <div class="card">
+      <h3>قائمة المشرفين الحالية</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>البريد (User ID)</th>
+            <th>الصلاحية</th>
+            <th>كلمة المرور (المسجلة)</th>
+            <th>تاريخ الإضافة</th>
+          </tr>
+        </thead>
+        <tbody id="adminsTableBody">
+          <tr><td colspan="4" style="text-align:center">جاري التحميل...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 
-        async function saveAdmin() {
-            const email = document.getElementById('user-email').value;
-            const pass = document.getElementById('admin-pass').value;
-            const role = document.getElementById('role-select').value;
-            const status = document.getElementById('status');
+  <script>
+    // نفس إعدادات الاتصال الخاصة بك
+    const supabase = window.supabase.createClient(
+      'https://yboxheficowekfzjatti.supabase.co',
+      'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS'
+    );
 
-            status.innerText = "جاري الحفظ...";
+    // 1. عند تحميل الصفحة، تأكد من تسجيل الدخول وصلاحية الأدمن
+    window.onload = async function() {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        window.location.replace('login.html'); // العودة لصفحة الدخول إذا لم يكن مسجلاً
+        return;
+      }
 
-            try {
-                // 1. جلب ID المستخدم من جدول البروفايلات
-                const { data: user, error: userErr } = await _sb
-                    .from('profiles')
-                    .select('id')
-                    .eq('email', email)
-                    .single();
+      // التحقق من أن المستخدم الحالي هو Admin
+      const { data: permissions, error } = await supabase
+        .from('admin_permissions')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
 
-                if (userErr || !user) throw new Error("المستخدم غير موجود");
+      if (error || permissions?.role !== 'admin') {
+        alert("غير مسموح لك بدخول هذه الصفحة!");
+        await supabase.auth.signOut();
+        window.location.replace('login.html');
+        return;
+      }
 
-                // 2. تحديث جدول admin_permissions (العمود admin_passwo كما في صورتك)
-                const { error } = await _sb.from('admin_permissions').upsert({
-                    user_id: user.id,
-                    role: role,
-                    admin_password: pass, // تأكدي من مطابقة الاسم للجدول
-                    permissions: ['all']
-                });
+      // إذا وصل هنا، فهو أدمن -> حمل القائمة
+      fetchAdmins();
+    };
 
-                if (error) throw error;
-                status.style.color = "green";
-                status.innerText = "تم الحفظ بنجاح ✅";
-            } catch (err) {
-                status.style.color = "red";
-                status.innerText = "خطأ: " + err.message;
+    // 2. دالة إضافة أدمن جديد
+    async function addAdmin() {
+      const email = document.getElementById('newEmail').value;
+      const pass = document.getElementById('newPass').value;
+      const role = document.getElementById('newRole').value;
+      const btn = document.getElementById('addBtn');
+      
+      if(pass.length < 6) return showStatus("كلمة المرور يجب أن تكون 6 أحرف على الأقل", "error");
+
+      btn.innerText = "جاري الإنشاء...";
+      btn.disabled = true;
+
+      // ملاحظة: بما أننا في المتصفح (Client-side)، استخدام signUp قد يقوم بتغيير الجلسة الحالية
+      // ولكن سنقوم بإنشاء المستخدم ثم إضافته للجدول.
+      
+      // الخطوة أ: إنشاء المستخدم في Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: email,
+        password: pass
+      });
+
+      if (authError) {
+        showStatus("خطأ في إنشاء الحساب: " + authError.message, "error");
+        btn.disabled = false; btn.innerText = "إضافة المشرف";
+        return;
+      }
+
+      const newUserId = authData.user?.id;
+
+      if (newUserId) {
+        // الخطوة ب: إضافة تفاصيل المستخدم في جدول admin_permissions
+        // نقوم بإدخال admin_password كما طلبت ليتوافق مع الجدول
+        const { error: dbError } = await supabase
+          .from('admin_permissions')
+          .insert([
+            { 
+              user_id: newUserId, 
+              role: role, 
+              admin_password: pass, // تخزين كلمة السر كما في هيكل الجدول المرفق
+              permissions: role === 'admin' ? ['all'] : ['read', 'write'] // افتراضي
             }
+          ]);
+
+        if (dbError) {
+          showStatus("تم إنشاء الحساب ولكن فشل إضافته للجدول: " + dbError.message, "error");
+        } else {
+          showStatus("تمت إضافة المشرف بنجاح!", "success");
+          document.getElementById('addAdminForm').reset();
+          fetchAdmins(); // تحديث الجدول
         }
-    </script>
+      } else {
+        // في بعض إعدادات Supabase، إذا كان تأكيد الإيميل مطلوباً، لن نحصل على ID فوراً
+        showStatus("تم إرسال رابط التفعيل للبريد الإلكتروني.", "success");
+      }
+
+      btn.disabled = false;
+      btn.innerText = "إضافة المشرف";
+    }
+
+    // 3. جلب وعرض المسؤولين في الجدول
+    async function fetchAdmins() {
+      const tbody = document.getElementById('adminsTableBody');
+      
+      const { data, error } = await supabase
+        .from('admin_permissions')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color:red">خطأ في التحميل: ${error.message}</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = ""; // تفريغ الجدول
+      data.forEach(admin => {
+        const date = new Date(admin.created_at).toLocaleDateString('ar-EG');
+        const badgeClass = admin.role === 'admin' ? 'badge-admin' : 'badge-moderator';
+        
+        // عرض الـ User ID (أو يمكن جلب الإيميل إذا كانت القواعد تسمح بربط الجداول)
+        // للعلم: جدول admin_permissions في الصورة لا يحتوي على عمود email، لذا سنعرض user_id أو نقوم بجلب الإيميل إذا أمكن
+        // هنا سنعرض جزء من الـ ID للتبسيط
+        const shortId = admin.user_id.split('-')[0] + '...'; 
+
+        const row = `
+          <tr>
+            <td title="${admin.user_id}">${shortId}</td>
+            <td><span class="badge ${badgeClass}">${admin.role}</span></td>
+            <td>${admin.admin_password || '****'}</td> 
+            <td>${date}</td>
+          </tr>
+        `;
+        tbody.innerHTML += row;
+      });
+    }
+
+    // 4. دالة عرض التنبيهات
+    function showStatus(msg, type) {
+      const s = document.getElementById('status');
+      s.innerText = msg; s.className = type; s.style.display = "block";
+      setTimeout(() => s.style.display = "none", 5000);
+    }
+
+    // 5. تسجيل الخروج
+    async function logout() {
+      await supabase.auth.signOut();
+      window.location.href = 'login.html'; // تأكد أن اسم ملف الدخول صحيح
+    }
+  </script>
 </body>
 </html>
-
