@@ -23,7 +23,7 @@
   <div id="loginSection" class="container">
     <h2>تسجيل دخول الإدارة (فلامنكو)</h2>
     <input type="email" id="email" placeholder="بريد المسؤول">
-    <input type="password" id="pass" placeholder="كلمة المرور">
+    <input type="password" id="pass" placeholder="كلمة مرور الإدارة">
     <button id="loginBtn" onclick="handleLogin()">دخول آمن</button>
     <div id="status"></div>
   </div>
@@ -35,43 +35,58 @@
     );
 
     async function handleLogin() {
-      const email = document.getElementById('email').value.trim();
-      const pass = document.getElementById('pass').value.trim();
+      const emailInput = document.getElementById('email').value.trim();
+      const passInput = document.getElementById('pass').value.trim();
       const btn = document.getElementById('loginBtn');
 
-      if(!email || !pass) return showStatus("يرجى ملء الحقول", "error");
+      if(!emailInput || !passInput) return showStatus("يرجى ملء الحقول", "error");
 
-      btn.innerText = "جاري التحقق...";
+      btn.innerText = "جاري التحقق من الصلاحيات...";
       btn.disabled = true;
 
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
-      
-      if (error) {
-        showStatus("خطأ في الدخول: " + error.message, "error");
+      try {
+        // 1. البحث في جدول البروفايلات لجلب الـ ID عن طريق البريد
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', emailInput)
+          .single();
+
+        if (profileError || !profile) {
+          throw new Error("عذراً، هذا البريد غير مسجل كمسؤول");
+        }
+
+        // 2. التحقق من كلمة مرور الإدارة في جدول admin_permissions
+        const { data: adminData, error: adminError } = await supabase
+          .from('admin_permissions')
+          .select('role, admin_password')
+          .eq('user_id', profile.id)
+          .single();
+
+        if (adminError || !adminData) {
+          throw new Error("ليس لديك صلاحيات دخول الإدارة");
+        }
+
+        // 3. مطابقة كلمة المرور المدخلة مع المخزنة (Plain Text كما في صورتك)
+        if (adminData.admin_password === passInput) {
+            showStatus("تم تسجيل الدخول بنجاح! جاري التوجيه...", "success");
+            
+            // تخزين جلسة عمل مؤقتة في المتصفح
+            localStorage.setItem('admin_role', adminData.role);
+            localStorage.setItem('admin_user_id', profile.id);
+
+            // التوجيه لصفحة التحكم الرئيسية
+            setTimeout(() => {
+                window.location.replace('index.html'); 
+            }, 1000);
+        } else {
+            throw new Error("كلمة مرور الإدارة غير صحيحة");
+        }
+
+      } catch (err) {
+        showStatus(err.message, "error");
         btn.innerText = "دخول آمن";
         btn.disabled = false;
-        return;
-      }
-      
-      // بمجرد نجاح تسجيل الدخول، نتحقق من الصلاحيات ونوجهه للصفحة الرئيسية
-      verifyAdmin(data.user.id);
-    }
-
-    async function verifyAdmin(userId) {
-      const { data, error } = await supabase
-        .from('admin_permissions')
-        .select('role')
-        .eq('user_id', userId)
-        .single();
-
-      if (data?.role === 'admin') {
-        // التوجيه للصفحة الرئيسية التي بها القائمة الجانبية
-        window.location.replace('index.html'); 
-      } else {
-        showStatus("⛔ عذراً، لا تملك صلاحية الإدارة", "error");
-        await supabase.auth.signOut();
-        document.getElementById('loginBtn').disabled = false;
-        document.getElementById('loginBtn').innerText = "دخول آمن";
       }
     }
 
