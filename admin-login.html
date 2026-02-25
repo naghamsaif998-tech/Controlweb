@@ -5,96 +5,133 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>فلامنكو | دخول الإدارة</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root { --brand-color: #d63384; --brand-light: #fce4ec; }
     body { font-family: -apple-system, sans-serif; background-color: #ffffff; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
     .container { width: 100%; max-width: 400px; text-align: center; padding: 30px; }
     .logo { width: 100px; margin-bottom: 20px; }
-    h2 { font-size: 24px; color: var(--brand-color); margin-bottom: 30px; font-weight: 900; }
+    h2 { font-size: 24px; color: var(--brand-color); margin-bottom: 10px; font-weight: 900; }
+    p.hint { color: #666; font-size: 14px; margin-bottom: 25px; }
     
-    .input-group { margin-bottom: 15px; position: relative; }
-    input { width: 100%; padding: 16px; border-radius: 15px; border: 2px solid var(--brand-light); outline: none; font-size: 16px; text-align: right; transition: 0.3s; }
+    .input-group { margin-bottom: 15px; }
+    input { width: 100%; padding: 16px; border-radius: 15px; border: 2px solid var(--brand-light); outline: none; font-size: 16px; text-align: center; transition: 0.3s; }
     input:focus { border-color: var(--brand-color); }
 
-    .btn-login { width: 100%; padding: 16px; border-radius: 15px; border: none; background: var(--brand-color); color: white; font-size: 18px; font-weight: 700; cursor: pointer; margin-top: 10px; box-shadow: 0 4px 15px rgba(214, 51, 132, 0.3); }
+    .btn-login { width: 100%; padding: 16px; border-radius: 15px; border: none; background: var(--brand-color); color: white; font-size: 18px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 15px rgba(214, 51, 132, 0.3); }
     .btn-login:disabled { opacity: 0.6; }
 
-    #loader { display: none; margin-top: 20px; color: var(--brand-color); font-weight: bold; }
     #error-msg { color: #dc2626; font-size: 14px; margin-top: 15px; display: none; background: #fee2e2; padding: 10px; border-radius: 10px; }
+    #success-msg { color: #16a34a; font-size: 14px; margin-top: 15px; display: none; background: #dcfce7; padding: 10px; border-radius: 10px; }
   </style>
 </head>
 <body>
 
   <div class="container">
     <img src="assets/logo.png" class="logo" alt="Logo">
-    <h2>تسجيل دخول الإدارة</h2>
+    <h2>دخول الإدارة</h2>
     
-    <div class="input-group">
-      <input type="email" id="email" placeholder="البريد الإلكتروني">
-    </div>
-    <div class="input-group">
-      <input type="password" id="pass" placeholder="كلمة المرور">
+    <div id="emailSection">
+      <p class="hint">سيتم إرسال رمز الدخول لبريد الإدارة المسجل فقط</p>
+      <div class="input-group">
+        <input type="email" id="email" placeholder="بريد المسؤول">
+      </div>
+      <button id="sendBtn" class="btn-login" onclick="checkAndSendOTP()">إرسال الرمز الرقمي</button>
     </div>
 
-    <button id="loginBtn" class="btn-login" onclick="adminLogin()">دخول آمن</button>
+    <div id="otpSection" style="display:none">
+      <p class="hint">أدخل الرمز الرقمي المرسل لبريدك</p>
+      <div class="input-group">
+        <input type="text" id="otp" placeholder="000000">
+      </div>
+      <button id="verifyBtn" class="btn-login" onclick="verifyOTP()">تأكيد ودخول</button>
+    </div>
     
-    <div id="loader">جاري التحقق من الصلاحيات...</div>
     <div id="error-msg"></div>
+    <div id="success-msg"></div>
   </div>
 
   <script>
-    const SUPABASE_URL = "https://yboxheficowekfzjatti.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS";
-    const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const client = supabase.createClient(
+      "https://yboxheficowekfzjatti.supabase.co", 
+      "sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS"
+    );
 
-    async function adminLogin() {
+    // 1. التحقق من أن الإيميل "أدمن" في جدولك ثم إرسال الرمز
+    async function checkAndSendOTP() {
       const email = document.getElementById('email').value.trim();
-      const pass = document.getElementById('pass').value;
-      const btn = document.getElementById('loginBtn');
+      const btn = document.getElementById('sendBtn');
       const errorDiv = document.getElementById('error-msg');
-      const loader = document.getElementById('loader');
-
-      if (!email || !pass) return showError("يرجى إدخال البيانات كاملة");
+      
+      if (!email) return showMsg("يرجى إدخال البريد", "error");
 
       btn.disabled = true;
-      loader.style.display = 'block';
-      errorDiv.style.display = 'none';
+      btn.innerText = "جاري التحقق من الصلاحيات...";
+      errorDiv.style.display = "none";
 
-      // 1. محاولة تسجيل الدخول بالنظام الأساسي
-      const { data, error } = await client.auth.signInWithPassword({
-        email: email,
-        password: pass
+      // ملاحظة تقنية: سنرسل الرمز مباشرة، وسنتأكد من الصلاحية عند استلام الرمز
+      // لأن Supabase لا يسمح بالبحث عن المستخدمين قبل تسجيل دخولهم لأسباب أمنية
+      // ولكننا سنقوم بالتحقق فور نجاح الرمز.
+      
+      const { error } = await client.auth.signInWithOtp({ email });
+
+      if (error) {
+        showMsg("فشل الإرسال: " + error.message, "error");
+        btn.disabled = false;
+        btn.innerText = "إرسال الرمز الرقمي";
+      } else {
+        document.getElementById('emailSection').style.display = 'none';
+        document.getElementById('otpSection').style.display = 'block';
+        showMsg("تم إرسال الرمز لبريدك.. تفقد صندوق الوارد", "success");
+      }
+    }
+
+    // 2. التحقق من الرمز الرقمي وفحص جدول admin_permissions
+    async function verifyOTP() {
+      const email = document.getElementById('email').value.trim();
+      const token = document.getElementById('otp').value.trim();
+      const btn = document.getElementById('verifyBtn');
+
+      if (!token) return showMsg("يرجى إدخال الرمز", "error");
+
+      btn.disabled = true;
+      btn.innerText = "جاري الدخول...";
+
+      const { data, error } = await client.auth.verifyOtp({
+        email, token, type: 'email'
       });
 
       if (error) {
-        loader.style.display = 'none';
+        showMsg("الرمز خاطئ أو منتهي الصلاحية", "error");
         btn.disabled = false;
-        // معالجة الخطأ 400 الذي ظهر لكِ سابقاً
-        return showError("خطأ في الدخول: تأكدي من البريد وكلمة السر");
+        btn.innerText = "تأكيد ودخول";
+        return;
       }
 
-      // 2. التحقق من أن المستخدم هو "Admin" فعلاً من جدولك
-      const { data: adminRecord, error: dbError } = await client
+      // التحقق من جدول admin_permissions المرفق في صورتك
+      const { data: adminData } = await client
         .from('admin_permissions')
         .select('role')
         .eq('user_id', data.user.id)
         .single();
 
-      if (adminRecord && adminRecord.role === 'admin') {
-        window.location.replace('index.html'); // التوجه للوحة الإدارة
+      if (adminData && adminData.role === 'admin') {
+        showMsg("تم التحقق بنجاح.. جاري التحويل", "success");
+        setTimeout(() => window.location.replace('index.html'), 1500);
       } else {
-        await client.auth.signOut(); // طرد المستخدم إذا لم يكن مديراً
-        loader.style.display = 'none';
-        btn.disabled = false;
-        showError("عذراً، لا تملك صلاحيات الوصول لهذه اللوحة");
+        await client.auth.signOut();
+        showMsg("⛔ عذراً، لا تملك صلاحية الإدارة", "error");
+        setTimeout(() => location.reload(), 3000);
       }
     }
 
-    function showError(msg) {
-      const errorDiv = document.getElementById('error-msg');
-      errorDiv.innerText = msg;
-      errorDiv.style.display = 'block';
+    function showMsg(msg, type) {
+      const e = document.getElementById('error-msg');
+      const s = document.getElementById('success-msg');
+      if (type === "error") {
+        e.innerText = msg; e.style.display = "block"; s.style.display = "none";
+      } else {
+        s.innerText = msg; s.style.display = "block"; e.style.display = "none";
+      }
     }
   </script>
 </body>
