@@ -2,115 +2,99 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>فلامنكو | تسجيل دخول الإدارة</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>فلامنكو | دخول الإدارة</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    :root { --primary: #d63384; --bg: #f0f2f5; --card: #ffffff; }
-    body { background: var(--bg); font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-    .container { background: var(--card); padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; }
-    h2 { color: var(--primary); margin-bottom: 25px; font-size: 22px; border-bottom: 2px solid #fce4ec; padding-bottom: 10px; }
-    .input-group { text-align: right; margin-bottom: 15px; }
-    label { display: block; margin-bottom: 5px; font-size: 13px; color: #666; font-weight: bold; }
-    input { width: 100%; padding: 14px; border: 1px solid #ddd; border-radius: 12px; box-sizing: border-box; text-align: right; font-size: 15px; outline: none; transition: 0.3s; }
-    input:focus { border-color: var(--primary); box-shadow: 0 0 8px rgba(214, 51, 132, 0.1); }
-    button { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 10px; transition: 0.2s; }
-    button:active { transform: scale(0.98); }
-    button:disabled { background: #ccc; cursor: not-allowed; }
-    #status { margin-top: 15px; padding: 12px; border-radius: 10px; font-size: 14px; display: none; text-align: center; }
-    .error { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
-    .success { background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; }
+    :root { --brand-color: #d63384; --brand-light: #fce4ec; }
+    body { font-family: -apple-system, sans-serif; background-color: #ffffff; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+    .container { width: 100%; max-width: 400px; text-align: center; padding: 30px; }
+    .logo { width: 100px; margin-bottom: 20px; }
+    h2 { font-size: 24px; color: var(--brand-color); margin-bottom: 30px; font-weight: 900; }
+    
+    .input-group { margin-bottom: 15px; position: relative; }
+    input { width: 100%; padding: 16px; border-radius: 15px; border: 2px solid var(--brand-light); outline: none; font-size: 16px; text-align: right; transition: 0.3s; }
+    input:focus { border-color: var(--brand-color); }
+
+    .btn-login { width: 100%; padding: 16px; border-radius: 15px; border: none; background: var(--brand-color); color: white; font-size: 18px; font-weight: 700; cursor: pointer; margin-top: 10px; box-shadow: 0 4px 15px rgba(214, 51, 132, 0.3); }
+    .btn-login:disabled { opacity: 0.6; }
+
+    #loader { display: none; margin-top: 20px; color: var(--brand-color); font-weight: bold; }
+    #error-msg { color: #dc2626; font-size: 14px; margin-top: 15px; display: none; background: #fee2e2; padding: 10px; border-radius: 10px; }
   </style>
 </head>
 <body>
 
-  <div id="loginSection" class="container">
-    <h2>مدخل الإدارة (فلامنكو)</h2>
+  <div class="container">
+    <img src="assets/logo.png" class="logo" alt="Logo">
+    <h2>تسجيل دخول الإدارة</h2>
     
     <div class="input-group">
-      <label>بريد المسؤول:</label>
-      <input type="email" id="email" placeholder="example@mail.com">
+      <input type="email" id="email" placeholder="البريد الإلكتروني">
     </div>
-
     <div class="input-group">
-      <label>كلمة مرور الإدارة:</label>
-      <input type="password" id="pass" placeholder="••••••••">
+      <input type="password" id="pass" placeholder="كلمة المرور">
     </div>
 
-    <button id="loginBtn" onclick="handleLogin()">دخول آمن</button>
-    <div id="status"></div>
+    <button id="loginBtn" class="btn-login" onclick="adminLogin()">دخول آمن</button>
+    
+    <div id="loader">جاري التحقق من الصلاحيات...</div>
+    <div id="error-msg"></div>
   </div>
 
   <script>
-    // تهيئة Supabase بالروابط الخاصة بكِ
-    const supabase = window.supabase.createClient(
-      'https://yboxheficowekfzjatti.supabase.co',
-      'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS'
-    );
+    const SUPABASE_URL = "https://yboxheficowekfzjatti.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS";
+    const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    async function handleLogin() {
-      const emailInput = document.getElementById('email').value.trim();
-      const passInput = document.getElementById('pass').value.trim();
+    async function adminLogin() {
+      const email = document.getElementById('email').value.trim();
+      const pass = document.getElementById('pass').value;
       const btn = document.getElementById('loginBtn');
+      const errorDiv = document.getElementById('error-msg');
+      const loader = document.getElementById('loader');
 
-      if(!emailInput || !passInput) {
-          return showStatus("يرجى إدخال البريد وكلمة المرور", "error");
+      if (!email || !pass) return showError("يرجى إدخال البيانات كاملة");
+
+      btn.disabled = true;
+      loader.style.display = 'block';
+      errorDiv.style.display = 'none';
+
+      // 1. محاولة تسجيل الدخول بالنظام الأساسي
+      const { data, error } = await client.auth.signInWithPassword({
+        email: email,
+        password: pass
+      });
+
+      if (error) {
+        loader.style.display = 'none';
+        btn.disabled = false;
+        // معالجة الخطأ 400 الذي ظهر لكِ سابقاً
+        return showError("خطأ في الدخول: تأكدي من البريد وكلمة السر");
       }
 
-      btn.innerText = "جاري التحقق...";
-      btn.disabled = true;
+      // 2. التحقق من أن المستخدم هو "Admin" فعلاً من جدولك
+      const { data: adminRecord, error: dbError } = await client
+        .from('admin_permissions')
+        .select('role')
+        .eq('user_id', data.user.id)
+        .single();
 
-      try {
-        // 1. البحث عن ID المستخدم في جدول profiles باستخدام البريد
-        const { data: profile, error: pErr } = await supabase
-          .from('profiles')
-          .select('id, username')
-          .eq('email', emailInput)
-          .single();
-
-        if (pErr || !profile) {
-          throw new Error("هذا البريد غير مسجل كمسؤول");
-        }
-
-        // 2. التحقق من كلمة السر في جدول admin_permissions (العمود admin_password)
-        const { data: adminData, error: aErr } = await supabase
-          .from('admin_permissions')
-          .select('role, admin_password')
-          .eq('user_id', profile.id)
-          .single();
-
-        if (aErr || !adminData) {
-          throw new Error("لا توجد صلاحيات إدارة لهذا الحساب");
-        }
-
-        // 3. مطابقة كلمة السر المدخلة مع المخزنة يدوياً
-        if (adminData.admin_password === passInput) {
-            showStatus("أهلاً بك " + profile.username + ".. جاري توجيهك", "success");
-            
-            // حفظ بيانات الجلسة مؤقتاً
-            localStorage.setItem('f_admin_id', profile.id);
-            localStorage.setItem('f_admin_role', adminData.role);
-
-            // التوجيه لصفحة التحكم الرئيسية
-            setTimeout(() => {
-                window.location.replace('index.html'); 
-            }, 1200);
-        } else {
-            throw new Error("كلمة مرور الإدارة غير صحيحة");
-        }
-
-      } catch (err) {
-        showStatus(err.message, "error");
-        btn.innerText = "دخول آمن";
+      if (adminRecord && adminRecord.role === 'admin') {
+        window.location.replace('index.html'); // التوجه للوحة الإدارة
+      } else {
+        await client.auth.signOut(); // طرد المستخدم إذا لم يكن مديراً
+        loader.style.display = 'none';
         btn.disabled = false;
+        showError("عذراً، لا تملك صلاحيات الوصول لهذه اللوحة");
       }
     }
 
-    function showStatus(msg, type) {
-      const s = document.getElementById('status');
-      s.innerText = msg;
-      s.className = type;
-      s.style.display = "block";
+    function showError(msg) {
+      const errorDiv = document.getElementById('error-msg');
+      errorDiv.innerText = msg;
+      errorDiv.style.display = 'block';
     }
   </script>
 </body>
