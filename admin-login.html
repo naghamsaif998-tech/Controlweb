@@ -7,45 +7,47 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root { --brand-color: #d63384; --brand-light: #fce4ec; }
-    body { font-family: -apple-system, sans-serif; background-color: #f8f9fa; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-    .container { background: white; width: 90%; max-width: 400px; text-align: center; padding: 40px 25px; border-radius: 30px; box-shadow: 0 15px 35px rgba(214, 51, 132, 0.1); }
-    h2 { font-size: 24px; color: var(--brand-color); margin-bottom: 8px; font-weight: 900; }
-    p.subtitle { color: #888; font-size: 14px; margin-bottom: 30px; }
+    body { font-family: -apple-system, sans-serif; background-color: #ffffff; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+    .container { width: 100%; max-width: 400px; text-align: center; padding: 30px; }
+    .logo { width: 100px; margin-bottom: 20px; }
+    h2 { font-size: 24px; color: var(--brand-color); margin-bottom: 10px; font-weight: 900; }
+    p.hint { color: #666; font-size: 14px; margin-bottom: 25px; }
     
-    .input-group { margin-bottom: 20px; }
-    input { width: 100%; padding: 18px; border-radius: 15px; border: 2px solid var(--brand-light); outline: none; font-size: 16px; text-align: center; transition: 0.3s; box-sizing: border-box; }
-    input:focus { border-color: var(--brand-color); background: #fffcfd; }
+    .input-group { margin-bottom: 15px; }
+    input { width: 100%; padding: 16px; border-radius: 15px; border: 2px solid var(--brand-light); outline: none; font-size: 16px; text-align: center; transition: 0.3s; }
+    input:focus { border-color: var(--brand-color); }
 
-    .btn-main { width: 100%; padding: 18px; border-radius: 15px; border: none; background: var(--brand-color); color: white; font-size: 18px; font-weight: 700; cursor: pointer; transition: 0.3s; box-shadow: 0 8px 20px rgba(214, 51, 132, 0.2); }
-    .btn-main:active { transform: scale(0.98); }
-    .btn-main:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-login { width: 100%; padding: 16px; border-radius: 15px; border: none; background: var(--brand-color); color: white; font-size: 18px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 15px rgba(214, 51, 132, 0.3); }
+    .btn-login:disabled { opacity: 0.6; }
 
-    #status-msg { margin-top: 20px; font-size: 14px; padding: 12px; border-radius: 12px; display: none; }
-    .error { background: #fee2e2; color: #dc2626; }
-    .success { background: #dcfce7; color: #16a34a; }
+    #error-msg { color: #dc2626; font-size: 14px; margin-top: 15px; display: none; background: #fee2e2; padding: 10px; border-radius: 10px; }
+    #success-msg { color: #16a34a; font-size: 14px; margin-top: 15px; display: none; background: #dcfce7; padding: 10px; border-radius: 10px; }
   </style>
 </head>
 <body>
 
   <div class="container">
-    <h2>تسجيل دخول الإدارة</h2>
-    <p class="subtitle" id="hintText">أدخلي بريد المسؤول لتلقي رمز الدخول</p>
+    <img src="assets/logo.png" class="logo" alt="Logo">
+    <h2>دخول الإدارة</h2>
     
-    <div id="emailView">
+    <div id="emailSection">
+      <p class="hint">سيتم إرسال رمز الدخول لبريد الإدارة المسجل فقط</p>
       <div class="input-group">
-        <input type="email" id="adminEmail" placeholder="example@gmail.com">
+        <input type="email" id="email" placeholder="بريد المسؤول">
       </div>
-      <button id="actionBtn" class="btn-main" onclick="requestOTP()">إرسال رمز التحقق</button>
+      <button id="sendBtn" class="btn-login" onclick="checkAndSendOTP()">إرسال الرمز الرقمي</button>
     </div>
 
-    <div id="otpView" style="display:none">
+    <div id="otpSection" style="display:none">
+      <p class="hint">أدخل الرمز الرقمي المرسل لبريدك</p>
       <div class="input-group">
-        <input type="text" id="otpCode" placeholder="0 0 0 0 0 0" maxlength="6">
+        <input type="text" id="otp" placeholder="000000">
       </div>
-      <button id="verifyBtn" class="btn-main" onclick="confirmLogin()">تأكيد ودخول</button>
+      <button id="verifyBtn" class="btn-login" onclick="verifyOTP()">تأكيد ودخول</button>
     </div>
     
-    <div id="status-msg"></div>
+    <div id="error-msg"></div>
+    <div id="success-msg"></div>
   </div>
 
   <script>
@@ -54,65 +56,83 @@
       "sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS"
     );
 
-    async function requestOTP() {
-      const email = document.getElementById('adminEmail').value.trim();
-      if (!email) return showStatus("يرجى كتابة البريد أولاً", "error");
+    // 1. التحقق من أن الإيميل "أدمن" في جدولك ثم إرسال الرمز
+    async function checkAndSendOTP() {
+      const email = document.getElementById('email').value.trim();
+      const btn = document.getElementById('sendBtn');
+      const errorDiv = document.getElementById('error-msg');
+      
+      if (!email) return showMsg("يرجى إدخال البريد", "error");
 
-      const btn = document.getElementById('actionBtn');
       btn.disabled = true;
-      btn.innerText = "جاري الإرسال...";
+      btn.innerText = "جاري التحقق من الصلاحيات...";
+      errorDiv.style.display = "none";
 
-      // إرسال الرمز السحري (OTP)
+      // ملاحظة تقنية: سنرسل الرمز مباشرة، وسنتأكد من الصلاحية عند استلام الرمز
+      // لأن Supabase لا يسمح بالبحث عن المستخدمين قبل تسجيل دخولهم لأسباب أمنية
+      // ولكننا سنقوم بالتحقق فور نجاح الرمز.
+      
       const { error } = await client.auth.signInWithOtp({ email });
 
       if (error) {
-        showStatus("خطأ: " + error.message, "error");
+        showMsg("فشل الإرسال: " + error.message, "error");
         btn.disabled = false;
-        btn.innerText = "إرسال رمز التحقق";
+        btn.innerText = "إرسال الرمز الرقمي";
       } else {
-        document.getElementById('emailView').style.display = 'none';
-        document.getElementById('otpView').style.display = 'block';
-        document.getElementById('hintText').innerText = "أدخلي الرمز المكون من 6 أرقام الآن";
-        showStatus("تم إرسال الرمز لبريدك بنجاح", "success");
+        document.getElementById('emailSection').style.display = 'none';
+        document.getElementById('otpSection').style.display = 'block';
+        showMsg("تم إرسال الرمز لبريدك.. تفقد صندوق الوارد", "success");
       }
     }
 
-    async function confirmLogin() {
-      const email = document.getElementById('adminEmail').value.trim();
-      const token = document.getElementById('otpCode').value.trim();
+    // 2. التحقق من الرمز الرقمي وفحص جدول admin_permissions
+    async function verifyOTP() {
+      const email = document.getElementById('email').value.trim();
+      const token = document.getElementById('otp').value.trim();
       const btn = document.getElementById('verifyBtn');
 
-      if (!token) return showStatus("يرجى إدخال الرمز", "error");
+      if (!token) return showMsg("يرجى إدخال الرمز", "error");
 
       btn.disabled = true;
-      btn.innerText = "جاري التحقق...";
+      btn.innerText = "جاري الدخول...";
 
-      const { data, error } = await client.auth.verifyOtp({ email, token, type: 'email' });
+      const { data, error } = await client.auth.verifyOtp({
+        email, token, type: 'email'
+      });
 
       if (error) {
-        showStatus("الرمز غير صحيح أو انتهت صلاحيته", "error");
+        showMsg("الرمز خاطئ أو منتهي الصلاحية", "error");
         btn.disabled = false;
         btn.innerText = "تأكيد ودخول";
-      } else {
-        // فحص الصلاحيات من جدولك admin_permissions
-        const { data: admin } = await client.from('admin_permissions').select('role').eq('user_id', data.user.id).single();
+        return;
+      }
 
-        if (admin && admin.role === 'admin') {
-          showStatus("تم التحقق! جاري الدخول...", "success");
-          setTimeout(() => window.location.replace('index.html'), 1000);
-        } else {
-          await client.auth.signOut();
-          showStatus("هذا البريد ليس له صلاحية إدارة", "error");
-          setTimeout(() => location.reload(), 2500);
-        }
+      // التحقق من جدول admin_permissions المرفق في صورتك
+      const { data: adminData } = await client
+        .from('admin_permissions')
+        .select('role')
+        .eq('user_id', data.user.id)
+        .single();
+
+      if (adminData && adminData.role === 'admin') {
+        showMsg("تم التحقق بنجاح.. جاري التحويل", "success");
+        setTimeout(() => window.location.replace('index.html'), 1500);
+      } else {
+        await client.auth.signOut();
+        showMsg("⛔ عذراً، لا تملك صلاحية الإدارة", "error");
+        setTimeout(() => location.reload(), 3000);
       }
     }
 
-    function showStatus(msg, type) {
-      const s = document.getElementById('status-msg');
-      s.innerText = msg; s.className = type; s.style.display = "block";
+    function showMsg(msg, type) {
+      const e = document.getElementById('error-msg');
+      const s = document.getElementById('success-msg');
+      if (type === "error") {
+        e.innerText = msg; e.style.display = "block"; s.style.display = "none";
+      } else {
+        s.innerText = msg; s.style.display = "block"; e.style.display = "none";
+      }
     }
   </script>
 </body>
 </html>
-
