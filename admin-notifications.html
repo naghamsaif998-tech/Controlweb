@@ -2,86 +2,89 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>إدارة الإشعارات | فلامنكو</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
         :root { --main: #d63384; --secondary: #9d174d; --bg: #f8f9fa; }
-        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); direction: rtl; margin: 0; padding: 15px; }
+        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; outline: none; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); direction: rtl; margin: 0; padding: 15px; user-select: none; }
         
-        .header { background: linear-gradient(135deg, var(--main), var(--secondary)); color: white; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(214, 51, 132, 0.2); }
-        .container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; position: relative; }
+        .header { background: linear-gradient(135deg, var(--main), var(--secondary)); color: white; padding: 25px 20px; border-radius: 20px; text-align: center; margin-bottom: 20px; box-shadow: 0 8px 16px rgba(214, 51, 132, 0.15); }
+        .header h1 { font-size: 22px; margin: 0; }
         
-        h2 { color: var(--main); border-bottom: 2px solid #eee; padding-bottom: 10px; font-size: 1.1rem; margin-top: 0; }
-        .form-group { margin-bottom: 15px; position: relative; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; font-size: 14px; }
+        .container { background: white; padding: 20px; border-radius: 18px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 20px; border: 1px solid #f0f0f0; }
         
-        input, select, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 16px; outline: none; transition: 0.3s; background: #fff; }
-        input:focus { border-color: var(--main); }
+        h2 { color: var(--main); border-bottom: 2px solid #fdf2f8; padding-bottom: 12px; font-size: 16px; margin-top: 0; display: flex; align-items: center; gap: 8px; }
+        .form-group { margin-bottom: 18px; position: relative; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; color: #666; font-size: 13px; }
         
-        .btn { background: var(--main); color: white; border: none; padding: 14px; border-radius: 10px; cursor: pointer; width: 100%; font-weight: bold; font-size: 16px; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; }
-        .btn:active { transform: scale(0.98); opacity: 0.9; }
+        input, select, textarea { width: 100%; padding: 14px; border: 1px solid #eee; border-radius: 12px; box-sizing: border-box; font-size: 15px; background: #fafafa; transition: 0.3s; -webkit-appearance: none; }
+        input:focus { border-color: var(--main); background: #fff; box-shadow: 0 0 0 3px rgba(214, 51, 132, 0.05); }
         
-        .notif-card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-right: 5px solid var(--main); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .notif-header { display: flex; justify-content: space-between; font-weight: bold; color: var(--main); margin-bottom: 5px; font-size: 14px; }
+        .btn { background: linear-gradient(to right, var(--main), var(--secondary)); color: white; border: none; padding: 16px; border-radius: 14px; cursor: pointer; width: 100%; font-weight: bold; font-size: 16px; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 6px 12px rgba(214, 51, 132, 0.2); }
+        .btn:active { transform: scale(0.96); opacity: 0.9; }
+        .btn:disabled { opacity: 0.7; cursor: not-allowed; }
         
-        #suggestions { border: 1px solid #ddd; display: none; max-height: 200px; overflow-y: auto; background: white; position: absolute; width: 100%; z-index: 100; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); top: 70px; }
-        .user-suggestion { padding: 12px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 14px; color: #333; }
-        .user-suggestion:hover { background: #fdf2f8; }
+        .notif-card { background: white; padding: 16px; border-radius: 15px; margin-bottom: 12px; border-right: 5px solid var(--main); box-shadow: 0 3px 6px rgba(0,0,0,0.02); }
+        .notif-header { display: flex; justify-content: space-between; font-weight: bold; color: #333; margin-bottom: 6px; font-size: 14px; }
         
-        .back-btn { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 15px; color: var(--main); text-decoration: none; font-weight: bold; font-size: 14px; }
-        #loading { text-align: center; padding: 30px; color: #999; }
+        #suggestions { border: 1px solid #eee; display: none; max-height: 220px; overflow-y: auto; background: white; position: absolute; width: 100%; z-index: 1000; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); top: 75px; }
+        .user-suggestion { padding: 14px; cursor: pointer; border-bottom: 1px solid #f9f9f9; font-size: 14px; color: #333; }
+        .user-suggestion:active { background: #fdf2f8; }
+        
+        .back-btn { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 15px; color: #666; text-decoration: none; font-weight: 600; font-size: 14px; padding: 5px 10px; }
+        #loading { text-align: center; padding: 30px; color: var(--main); }
     </style>
 </head>
 <body>
 
-    <a href="index.html" class="back-btn"><i class="fas fa-arrow-right"></i> العودة للرئيسية</a>
+    <a href="index.html" class="back-btn"><i class="fas fa-chevron-right"></i> العودة للرئيسية</a>
 
     <div class="header">
-        <h1><i class="fas fa-bell"></i> نظام الإشعارات</h1>
-        <p style="margin:5px 0 0;">إرسال تنبيهات مباشرة للقراء</p>
+        <h1><i class="fas fa-paper-plane"></i> إرسال التنبيهات</h1>
+        <p style="margin:5px 0 0; font-size: 13px; opacity: 0.9;">تواصل مع قراء فلامنكو فوراً</p>
     </div>
 
     <div class="container">
-        <h2><i class="fas fa-paper-plane"></i> إرسال إشعار جديد</h2>
+        <h2><i class="fas fa-plus-circle"></i> إنشاء إشعار</h2>
         
         <div class="form-group">
-            <label>نوع الإشعار</label>
+            <label>نوع الإرسال</label>
             <select id="type" onchange="toggleUserSection(this.value)">
                 <option value="general">إشعار عام (للجميع)</option>
                 <option value="private">إشعار خاص (لمستخدم محدد)</option>
-                <option value="warning">تحذير (لمستخدم محدد)</option>
+                <option value="warning">تحذير (حالة مخالفة)</option>
             </select>
         </div>
 
         <div class="form-group" id="user-sec" style="display:none;">
-            <label>ابحث عن المستخدم</label>
-            <input type="text" id="user-search" oninput="searchUsers(this.value)" placeholder="اكتب اسم المستخدم أو الإيميل..." autocomplete="off">
+            <label>المستلم</label>
+            <input type="text" id="user-search" oninput="searchUsers(this.value)" placeholder="ابحث باسم المستخدم أو الإيميل..." autocomplete="off">
             <div id="suggestions"></div>
             <input type="hidden" id="target-id">
-            <div id="selected-name" style="margin-top:8px; color: #16a34a; font-size: 13px; font-weight: bold;"></div>
+            <div id="selected-name" style="margin-top:10px; color: #16a34a; font-size: 12px; font-weight: bold; background: #f0fdf4; padding: 5px 10px; border-radius: 8px; display: none;"></div>
         </div>
 
         <div class="form-group">
-            <label>العنوان</label>
-            <input type="text" id="title" placeholder="عنوان الرسالة (مثلاً: تحديث جديد)">
+            <label>عنوان الإشعار</label>
+            <input type="text" id="title" placeholder="أدخل عنواناً جذاباً...">
         </div>
 
         <div class="form-group">
-            <label>المحتوى</label>
-            <textarea id="message" rows="3" placeholder="اكتب نص الإشعار هنا..."></textarea>
+            <label>نص الرسالة</label>
+            <textarea id="message" rows="3" placeholder="ماذا تريد أن تقول للقراء؟"></textarea>
         </div>
 
         <button class="btn" id="sendBtn" onclick="sendNotif()">
-            <i class="fas fa-paper-plane"></i> إرسال الإشعار
+            <i class="fas fa-rocket"></i> إرسال الآن
         </button>
     </div>
 
     <div class="container">
-        <h2><i class="fas fa-history"></i> سجل الإشعارات</h2>
-        <div id="loading"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>
+        <h2><i class="fas fa-clock-rotate-left"></i> آخر الإشعارات المرسلة</h2>
+        <div id="loading"><i class="fas fa-spinner fa-spin"></i> جاري مزامنة السجل...</div>
         <div id="notif-list"></div>
     </div>
 
@@ -97,12 +100,16 @@
                 allUsers = usersData || [];
                 loadNotifications();
             } catch (err) {
-                document.getElementById('loading').innerHTML = "خطأ في الاتصال بالسيرفر";
+                document.getElementById('loading').innerHTML = "فشل تحديث البيانات";
             }
         }
 
         function toggleUserSection(val) {
             document.getElementById('user-sec').style.display = (val === 'general') ? 'none' : 'block';
+            if(val === 'general') {
+                document.getElementById('target-id').value = '';
+                document.getElementById('selected-name').style.display = 'none';
+            }
         }
 
         function searchUsers(query) {
@@ -116,8 +123,8 @@
 
             sugBox.innerHTML = filtered.map(u => `
                 <div class="user-suggestion" onclick="selectUser('${u.id}', '${u.username || u.email}')">
-                    <i class="fas fa-user"></i> ${u.username || 'مستخدم'} <br>
-                    <small style="color:#999">${u.email}</small>
+                    <i class="fas fa-user-circle"></i> <strong>${u.username || 'بدون اسم'}</strong><br>
+                    <small style="color:#888">${u.email}</small>
                 </div>
             `).join('');
             sugBox.style.display = filtered.length ? 'block' : 'none';
@@ -125,11 +132,14 @@
 
         function selectUser(id, name) {
             document.getElementById('target-id').value = id;
-            document.getElementById('selected-name').innerText = "✅ تم الاختيار: " + name;
+            const statusEl = document.getElementById('selected-name');
+            statusEl.innerText = "✅ تم تحديد: " + name;
+            statusEl.style.display = "inline-block";
             document.getElementById('suggestions').style.display = 'none';
             document.getElementById('user-search').value = name;
         }
 
+        // الدالة المعدلة بالكامل لضمان الإرسال الصحيح
         async function sendNotif() {
             const title = document.getElementById('title').value.trim();
             const message = document.getElementById('message').value.trim();
@@ -137,26 +147,35 @@
             const targetId = document.getElementById('target-id').value;
             const btn = document.getElementById('sendBtn');
 
-            if (!title || !message) return alert("⚠️ يرجى كتابة العنوان والمحتوى");
-            if (type !== 'general' && !targetId) return alert("⚠️ يرجى اختيار مستخدم من القائمة");
+            if (!title || !message) return alert("⚠️ فضلاً أكمل العنوان ونص الرسالة");
+            if (type !== 'general' && !targetId) return alert("⚠️ فضلاً اختر مستخدماً من قائمة البحث");
 
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> جاري الإرسال...';
 
-            const { error } = await _sb.from('notifications').insert([{
-                title: title,
-                message: message,
-                type: type,
-                recipient_id: type === 'general' ? null : targetId
-            }]);
+            // تحديد المستلم (null يعني إرسال عام يظهر للكل)
+            const recipient = (type === 'general') ? null : targetId;
 
-            if (error) {
+            try {
+                const { error } = await _sb.from('notifications').insert([{
+                    title: title,
+                    message: message, 
+                    type: type,      
+                    recipient_id: recipient,
+                    is_read: false,
+                    created_at: new Date().toISOString()
+                }]);
+
+                if (error) throw error;
+
+                alert("✅ تم إرسال الإشعار بنجاح");
+                location.reload();
+
+            } catch (error) {
+                console.error("خطأ في الإرسال:", error);
                 alert("❌ فشل الإرسال: " + error.message);
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-paper-plane"></i> إرسال الإشعار';
-            } else {
-                alert("🚀 تم إرسال الإشعار بنجاح!");
-                location.reload();
+                btn.innerHTML = '<i class="fas fa-rocket"></i> إرسال الآن';
             }
         }
 
@@ -164,7 +183,7 @@
             try {
                 const { data, error } = await _sb.from('notifications')
                     .select('*, recipient:profiles(username)')
-                    .order('created_at', { ascending: false }).limit(10);
+                    .order('created_at', { ascending: false }).limit(8);
 
                 document.getElementById('loading').style.display = 'none';
                 const list = document.getElementById('notif-list');
@@ -174,21 +193,19 @@
                         <div class="notif-card">
                             <div class="notif-header">
                                 <span>${n.title}</span>
-                                <span class="count" style="font-size:10px">${n.type === 'general' ? 'عام' : 'خاص'}</span>
+                                <span style="background:#fce7f3; color:var(--main); padding:2px 8px; border-radius:5px; font-size:10px;">${n.type === 'general' ? 'عام' : 'خاص'}</span>
                             </div>
-                            <p style="margin:5px 0; font-size:14px; color:#444;">${n.message}</p>
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-                                <small style="color:#aaa">${new Date(n.created_at).toLocaleDateString('ar-EG')}</small>
-                                ${n.recipient?.username ? `<small style="color:var(--main)">لـ: ${n.recipient.username}</small>` : ''}
+                            <p style="margin:5px 0; font-size:13px; color:#555; line-height:1.4">${n.message || n.text || ''}</p>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; border-top:1px solid #f9f9f9; padding-top:8px;">
+                                <small style="color:#bbb"><i class="far fa-calendar-alt"></i> ${new Date(n.created_at).toLocaleDateString('ar-EG')}</small>
+                                ${n.recipient?.username ? `<small style="color:var(--main); font-weight:bold;">للمستخدم: ${n.recipient.username}</small>` : ''}
                             </div>
                         </div>
                     `).join('');
                 } else {
-                    list.innerHTML = "<p style='text-align:center; color:#999;'>لا يوجد سجل إشعارات.</p>";
+                    list.innerHTML = "<p style='text-align:center; color:#ccc; font-size:13px;'>لا توجد إشعارات سابقة.</p>";
                 }
-            } catch (e) {
-                console.error(e);
-            }
+            } catch (e) { console.error(e); }
         }
 
         window.onload = initPage;
