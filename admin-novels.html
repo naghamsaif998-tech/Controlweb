@@ -32,7 +32,6 @@
         .novel-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 8px; color: var(--main); }
         .author-name { font-size: 0.85rem; color: #aaa; margin-bottom: 15px; display: flex; align-items: center; gap: 6px; }
 
-        /* خانة إدخال السبب - تشبه ستايل لوحة الرقابة */
         .reason-container { margin-top: 10px; background: rgba(214, 51, 132, 0.05); padding: 10px; border-radius: 10px; border: 1px dashed #444; }
         .reason-input { width: 100%; background: transparent; border: none; color: var(--warning); font-size: 13px; padding: 5px; outline: none; }
         .reason-input::placeholder { color: #666; }
@@ -61,22 +60,24 @@
     <div id="novels-list"></div>
 
     <script>
-        const S_URL = 'https://yboxheficowekfzjatti.supabase.co';
-        const S_KEY = 'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS';
-        const _sb = window.supabase.createClient(S_URL, S_KEY);
+        // استخدام التسميات التي تضمن عدم التعارض
+        const APP_URL = 'https://yboxheficowekfzjatti.supabase.co';
+        const APP_KEY = 'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS';
+        const supabaseClient = supabase.createClient(APP_URL, APP_KEY);
 
         let allStories = [];
 
         async function init() {
             try {
-                const { data, error } = await _sb.from('stories').select('*').order('created_at', { ascending: false });
+                const { data, error } = await supabaseClient.from('stories').select('*').order('created_at', { ascending: false });
                 if (error) throw error;
                 allStories = data || [];
                 render(allStories);
             } catch (e) {
-                console.error(e);
+                console.error("Init Error:", e);
             } finally {
-                document.getElementById('loading').style.display = 'none';
+                const loader = document.getElementById('loading');
+                if(loader) loader.style.display = 'none';
             }
         }
 
@@ -91,12 +92,16 @@
 
         function render(stories) {
             const list = document.getElementById('novels-list');
+            const noData = document.getElementById('no-data');
+            if (!list) return;
+
             if (stories.length === 0) {
-                document.getElementById('no-data').style.display = 'block';
+                if(noData) noData.style.display = 'block';
                 list.innerHTML = '';
                 return;
             }
-            document.getElementById('no-data').style.display = 'none';
+            if(noData) noData.style.display = 'none';
+            
             list.innerHTML = stories.map(s => `
                 <div class="novel-card">
                     <div class="novel-title">${s.title}</div>
@@ -120,35 +125,33 @@
 
         async function processDelete(id, title, cover, authorId) {
             const reasonInput = document.getElementById(`reason-${id}`);
-            const reason = reasonInput.value.trim();
+            const reason = reasonInput ? reasonInput.value.trim() : "";
 
             if (!reason) {
                 alert("⚠️ يرجى كتابة سبب الحذف أولاً لإخطار الكاتب.");
-                reasonInput.focus();
+                if(reasonInput) reasonInput.focus();
                 return;
             }
 
             if (!confirm(`حذف "${title}"؟ لا يمكن التراجع.`)) return;
 
             try {
-                document.getElementById('loading').style.display = 'block';
+                const loader = document.getElementById('loading');
+                if(loader) loader.style.display = 'block';
 
-                // 1. إرسال إشعار للكاتب
-                await _sb.from('notifications').insert({
+                await supabaseClient.from('notifications').insert({
                     recipient_id: authorId,
                     title: "حذف محتوى مخالف ⚠️",
                     message: `تم حذف روايتك "${title}" لمخالفتها قوانين المنصة. السبب: ${reason}`,
                     type: 'system'
                 });
 
-                // 2. حذف صورة الغلاف من الستورج
                 if (cover && cover.includes('story_covers')) {
                     const filePath = cover.split('/').pop();
-                    await _sb.storage.from('story_covers').remove([filePath]);
+                    await supabaseClient.storage.from('story_covers').remove([filePath]);
                 }
 
-                // 3. حذف البيانات
-                const { error } = await _sb.from('stories').delete().eq('id', id);
+                const { error } = await supabaseClient.from('stories').delete().eq('id', id);
                 if (error) throw error;
 
                 alert("✅ تم الحذف وإخطار الكاتب بنجاح.");
@@ -158,7 +161,8 @@
             } catch (e) {
                 alert("حدث خطأ: " + e.message);
             } finally {
-                document.getElementById('loading').style.display = 'none';
+                const loader = document.getElementById('loading');
+                if(loader) loader.style.display = 'none';
             }
         }
 
@@ -166,3 +170,4 @@
     </script>
 </body>
 </html>
+
