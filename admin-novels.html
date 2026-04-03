@@ -7,162 +7,156 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        :root { --main: #d63384; --danger: #dc3545; --bg: #f8f9fa; --text: #333; }
-        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; outline: none; }
+        :root { --main: #d63384; --bg: #121212; --card: #1e1e1e; --text: #eee; --danger: #dc3545; --warning: #ffc107; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
         
         body { 
-            font-family: 'Segoe UI', Tahoma, sans-serif; 
+            font-family: 'Segoe UI', sans-serif; 
             background: var(--bg); 
+            color: var(--text); 
             margin: 0; 
             padding: 15px; 
             direction: rtl; 
         }
         
-        .back-btn { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 15px; color: var(--main); text-decoration: none; font-weight: bold; font-size: 14px; padding: 5px; }
-        
-        .header { background: linear-gradient(135deg, var(--main), #9d174d); color: white; padding: 25px 20px; border-radius: 20px; text-align: center; margin-bottom: 20px; box-shadow: 0 8px 16px rgba(214, 51, 132, 0.15); }
-        .header h1 { margin: 0; font-size: 1.4rem; }
-        
-        .search-container { position: relative; margin-bottom: 20px; }
-        .search-input { width: 100%; padding: 16px; border-radius: 15px; border: 2px solid #eee; font-size: 16px; background: white; -webkit-appearance: none; }
-        
-        .novel-card { background: white; padding: 20px; border-radius: 18px; margin-bottom: 15px; border-right: 6px solid var(--main); box-shadow: 0 4px 12px rgba(0,0,0,0.03); border: 1px solid #eee; }
-        .novel-title { font-size: 1.1rem; color: var(--text); margin: 0 0 10px 0; font-weight: 800; }
-        
-        .author-info { font-size: 0.9rem; color: #666; margin-bottom: 15px; display: flex; align-items: center; gap: 6px; }
-        
-        /* خانة سبب الحذف */
-        .reason-box { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #ddd; font-size: 14px; background: #fffafb; margin-bottom: 15px; transition: 0.3s; }
-        .reason-box:focus { border-color: var(--main); background: #fff; }
+        .header { background: linear-gradient(135deg, var(--main), #9d174d); padding: 20px; text-align: center; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        .header h1 { margin: 0; font-size: 1.3rem; color: white; }
 
-        .actions { display: flex; gap: 10px; border-top: 1px solid #f9f9f9; padding-top: 15px; }
+        .search-wrapper { position: relative; margin-bottom: 20px; }
+        .search-input { width: 100%; padding: 15px; border-radius: 12px; border: 1px solid #333; background: var(--card); color: white; font-size: 16px; transition: 0.3s; }
+        .search-input:focus { border-color: var(--main); }
+
+        .novel-card { background: var(--card); border-radius: 12px; padding: 18px; margin-bottom: 12px; border-right: 5px solid var(--main); animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
-        .btn { flex: 1; padding: 14px; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; color: white; text-align: center; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; }
+        .novel-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 8px; color: var(--main); }
+        .author-name { font-size: 0.85rem; color: #aaa; margin-bottom: 15px; display: flex; align-items: center; gap: 6px; }
+
+        /* خانة إدخال السبب - تشبه ستايل لوحة الرقابة */
+        .reason-container { margin-top: 10px; background: rgba(214, 51, 132, 0.05); padding: 10px; border-radius: 10px; border: 1px dashed #444; }
+        .reason-input { width: 100%; background: transparent; border: none; color: var(--warning); font-size: 13px; padding: 5px; outline: none; }
+        .reason-input::placeholder { color: #666; }
+
+        .actions { display: flex; gap: 10px; margin-top: 15px; }
+        .btn { flex: 1; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; transition: 0.2s; }
         .btn-delete { background: var(--danger); box-shadow: 0 4px 10px rgba(220, 53, 69, 0.2); }
-        .btn:active { transform: scale(0.96); opacity: 0.9; }
+        .btn:active { transform: scale(0.96); }
 
-        #loading { text-align: center; margin-top: 30px; color: var(--main); font-weight: bold; display: none; }
-        #no-data { text-align: center; padding: 40px; color: #999; display: none; }
+        #loading { text-align: center; color: var(--main); margin-top: 20px; }
+        #no-data { text-align: center; padding: 30px; color: #888; display: none; }
     </style>
 </head>
 <body>
 
-    <a href="index.html" class="back-btn"><i class="fas fa-chevron-right"></i> العودة للرئيسية</a>
-
     <div class="header">
-        <h1><i class="fas fa-tools"></i> لوحة التحكم</h1>
-        <p style="margin:5px 0 0; font-size: 12px; opacity: 0.9;">إدارة الروايات وإرسال تنبيهات الحذف</p>
+        <h1><i class="fas fa-book-reader"></i> إدارة الروايات | فلامنكو</h1>
     </div>
 
-    <div id="app-content">
-        <div class="search-container">
-            <input type="text" class="search-input" id="search-box" placeholder="بحث عن عنوان الرواية..." oninput="filterNovels(this.value)">
-        </div>
-        
-        <div id="loading"><i class="fas fa-sync fa-spin"></i> جاري المعالجة...</div>
-        <div id="no-data">لا توجد نتائج مطابقة.</div>
-        <div id="novels-list"></div>
+    <div class="search-wrapper">
+        <input type="text" id="searchBox" class="search-input" placeholder="ابحث عن رواية أو كاتب..." oninput="handleSearch()">
     </div>
+
+    <div id="loading"><i class="fas fa-spinner fa-spin"></i> جاري تحميل الروايات...</div>
+    <div id="no-data">لا توجد نتائج مطابقة لبحثك.</div>
+    <div id="novels-list"></div>
 
     <script>
-        const CONFIG = {
-            URL: 'https://yboxheficowekfzjatti.supabase.co',
-            KEY: 'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS'
-        };
-        let _sb;
-        let _items = [];
+        const S_URL = 'https://yboxheficowekfzjatti.supabase.co';
+        const S_KEY = 'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS';
+        const _sb = window.supabase.createClient(S_URL, S_KEY);
+
+        let allStories = [];
 
         async function init() {
             try {
-                _sb = window.supabase.createClient(CONFIG.URL, CONFIG.KEY);
-                document.getElementById('loading').style.display = 'block';
-                
                 const { data, error } = await _sb.from('stories').select('*').order('created_at', { ascending: false });
                 if (error) throw error;
-
-                _items = data || [];
-                render(_items);
+                allStories = data || [];
+                render(allStories);
             } catch (e) {
-                alert("خطأ في الاتصال: " + e.message);
+                console.error(e);
             } finally {
                 document.getElementById('loading').style.display = 'none';
             }
         }
 
-        function render(data) {
+        function handleSearch() {
+            const term = document.getElementById('searchBox').value.toLowerCase();
+            const filtered = allStories.filter(s => 
+                (s.title && s.title.toLowerCase().includes(term)) || 
+                (s.author_name && s.author_name.toLowerCase().includes(term))
+            );
+            render(filtered);
+        }
+
+        function render(stories) {
             const list = document.getElementById('novels-list');
-            if (data.length === 0) {
+            if (stories.length === 0) {
                 document.getElementById('no-data').style.display = 'block';
                 list.innerHTML = '';
                 return;
             }
             document.getElementById('no-data').style.display = 'none';
-            list.innerHTML = data.map(item => `
-                <div class="novel-card" id="card-${item.id}">
-                    <h2 class="novel-title">${item.title}</h2>
-                    <div class="author-info">
-                        <i class="far fa-user-circle"></i> الكاتب: ${item.author_name || 'مجهول'}
+            list.innerHTML = stories.map(s => `
+                <div class="novel-card">
+                    <div class="novel-title">${s.title}</div>
+                    <div class="author-name"><i class="fas fa-pen-nib"></i> الكاتب: ${s.author_name || 'مجهول'}</div>
+
+                    <div class="reason-container">
+                        <div style="font-size: 11px; color: var(--warning); margin-bottom: 5px;">
+                            <i class="fas fa-comment-dots"></i> سبب الحذف (سيصل للكاتب):
+                        </div>
+                        <input type="text" class="reason-input" id="reason-${s.id}" 
+                               placeholder="اكتب هنا مثلاً: محتوى غير لائق...">
                     </div>
 
-                    <input type="text" class="reason-box" id="reason-${item.id}" 
-                           placeholder="اكتب سبب حذف هذه الرواية هنا...">
-
                     <div class="actions">
-                        <button class="btn btn-delete" onclick="handleDelete('${item.id}', '${item.title}', '${item.cover_url}', '${item.user_id}')">
-                            <i class="fas fa-trash-alt"></i> حذف نهائي مع الإشعار
+                        <button class="btn btn-delete" onclick="processDelete('${s.id}', '${s.title}', '${s.cover_url}', '${s.user_id}')">
+                            <i class="fas fa-trash-alt"></i> حذف الرواية نهائياً
                         </button>
                     </div>
                 </div>`).join('');
         }
 
-        function filterNovels(q) {
-            const filtered = _items.filter(i => i.title.toLowerCase().includes(q.toLowerCase()));
-            render(filtered);
-        }
-
-        async function handleDelete(storyId, storyTitle, coverUrl, authorId) {
-            const reasonInput = document.getElementById(`reason-${storyId}`);
+        async function processDelete(id, title, cover, authorId) {
+            const reasonInput = document.getElementById(`reason-${id}`);
             const reason = reasonInput.value.trim();
-            
-            // التحقق من كتابة السبب
+
             if (!reason) {
-                alert("⚠️ من فضلك اكتبي سبب الحذف أولاً في الخانة المخصصة ليتم إخطار الكاتب.");
+                alert("⚠️ يرجى كتابة سبب الحذف أولاً لإخطار الكاتب.");
                 reasonInput.focus();
                 return;
             }
 
-            // التأكيد النهائي
-            if (!confirm(`هل أنتِ متأكدة من حذف "${storyTitle}" تماماً؟`)) return;
+            if (!confirm(`حذف "${title}"؟ لا يمكن التراجع.`)) return;
 
             try {
                 document.getElementById('loading').style.display = 'block';
 
-                // 1. إرسال إشعار للكاتب بالسبب
+                // 1. إرسال إشعار للكاتب
                 await _sb.from('notifications').insert({
                     recipient_id: authorId,
-                    title: "تم حذف روايتك ⚠️",
-                    message: `نعتذر منك، تم حذف رواية "${storyTitle}" لمخالفتها القوانين. السبب: ${reason}`,
-                    type: "system_alert"
+                    title: "حذف محتوى مخالف ⚠️",
+                    message: `تم حذف روايتك "${title}" لمخالفتها قوانين المنصة. السبب: ${reason}`,
+                    type: 'system'
                 });
 
-                // 2. حذف صورة الغلاف من التخزين
-                if (coverUrl && coverUrl.includes('story_covers')) {
-                    const filePath = coverUrl.split('/').pop();
+                // 2. حذف صورة الغلاف من الستورج
+                if (cover && cover.includes('story_covers')) {
+                    const filePath = cover.split('/').pop();
                     await _sb.storage.from('story_covers').remove([filePath]);
                 }
 
-                // 3. حذف بيانات الرواية من قاعدة البيانات
-                const { error } = await _sb.from('stories').delete().eq('id', storyId);
+                // 3. حذف البيانات
+                const { error } = await _sb.from('stories').delete().eq('id', id);
                 if (error) throw error;
 
-                alert("✅ تم الحذف بنجاح وإرسال السبب للكاتب.");
-                
-                // تحديث القائمة فوراً
-                _items = _items.filter(i => i.id != storyId);
-                render(_items);
+                alert("✅ تم الحذف وإخطار الكاتب بنجاح.");
+                allStories = allStories.filter(item => item.id !== id);
+                render(allStories);
 
             } catch (e) {
-                alert("❌ حدث خطأ أثناء الحذف: " + e.message);
+                alert("حدث خطأ: " + e.message);
             } finally {
                 document.getElementById('loading').style.display = 'none';
             }
