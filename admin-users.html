@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة المستخدمين | فلامنكو</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        :root { --main: #d63384; --bg: #121212; --card: #1e1e1e; --text: #eee; --danger: #dc3545; --success: #28a745; --warning: #ffc107; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 15px; direction: rtl; margin: 0; }
+        
+        .header { background: linear-gradient(135deg, var(--main), #9d174d); padding: 20px; text-align: center; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        
+        .search-wrapper { position: relative; margin-bottom: 20px; }
+        .search-wrapper i { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #888; }
+        .search-input { width: 100%; padding: 15px 45px 15px 15px; border-radius: 12px; border: 1px solid #333; background: var(--card); color: white; font-size: 16px; outline: none; transition: 0.3s; }
+        .search-input:focus { border-color: var(--main); }
+
+        .user-card { background: var(--card); border-radius: 12px; padding: 15px; margin-bottom: 12px; border-right: 5px solid var(--main); transition: 0.3s; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .user-card.banned-active { border-right-color: var(--warning); background: #2a2410; }
+        .user-info { display: flex; align-items: center; gap: 12px; }
+        .user-avatar { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; background: #333; border: 2px solid #444; }
+        .gem-badge { background: #333; padding: 5px 12px; border-radius: 20px; font-size: 13px; color: #ffd700; border: 1px solid #555; display: flex; align-items: center; gap: 5px; }
+        
+        .actions { display: flex; gap: 10px; margin-top: 15px; }
+        .btn { flex: 1; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; transition: 0.2s; }
+        .btn-delete { background: var(--danger); flex: 0.4; }
+        
+        .ban-meta { font-size: 11px; color: var(--warning); margin-top: 8px; background: rgba(255, 193, 7, 0.1); padding: 8px; border-radius: 8px; border: 1px dashed var(--warning); }
+        .no-results { text-align: center; padding: 30px; color: #888; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2><i class="fas fa-user-shield"></i> لوحة الرقابة | فلامنكو</h2>
+    </div>
+
+    <div class="search-wrapper">
+        <i class="fas fa-search"></i>
+        <input type="text" id="searchInput" class="search-input" placeholder="ابحث باسم المستخدم أو البريد..." oninput="handleSearch()">
+    </div>
+
+    <div id="list"><p style="text-align:center;">جاري تحميل البيانات...</p></div>
+
+    <script>
+        const S_URL = 'https://yboxheficowekfzjatti.supabase.co';
+        const S_KEY = 'sb_publishable_a482mpjOWq2R5Bil808Vng_DObZcycS';
+        const _sb = window.supabase.createClient(S_URL, S_KEY);
+
+        let allUsers = [];
+
+        async function loadData() {
+            const { data, error } = await _sb.from('profiles').select('*').order('created_at', { ascending: false });
+            if (!error) {
+                allUsers = data;
+                render(allUsers);
+            }
+        }
+
+        function handleSearch() {
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = allUsers.filter(u => 
+                (u.username && u.username.toLowerCase().includes(term)) || 
+                (u.email && u.email.toLowerCase().includes(term))
+            );
+            render(filtered);
+        }
+
+        function render(users) {
+            const listDiv = document.getElementById('list');
+            const now = new Date();
+
+            if (users.length === 0) {
+                listDiv.innerHTML = '<div class="no-results">لا يوجد نتائج...</div>';
+                return;
+            }
+
+            listDiv.innerHTML = users.map(u => {
+                const banExpiry = u.banned_until ? new Date(u.banned_until) : null;
+                const isCurrentlyBanned = u.is_banned && banExpiry && banExpiry > now;
+                const avatar = u.photo_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+
+                return `
+                <div class="user-card ${isCurrentlyBanned ? 'banned-active' : ''}" id="u-${u.id}">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <div class="user-info">
+                            <img src="${avatar}" class="user-avatar">
+                            <div>
+                                <div style="font-weight:bold;">${u.username || 'عضو جديد'}</div>
+                                <div style="font-size:12px; color:#888;">${u.email || 'بدون إيميل'}</div>
+                            </div>
+                        </div>
+                        <div class="gem-badge"><i class="fas fa-gem"></i> ${u.gems || 10}</div>
+                    </div>
+
+                    ${isCurrentlyBanned ? `
+                        <div class="ban-meta">
+                            <div><i class="fas fa-calendar-alt"></i> ينتهي في: ${banExpiry.toLocaleDateString('ar-EG')}</div>
+                            <div><i class="fas fa-comment-dots"></i> السبب: ${u.ban_reason || 'مخالفة السياسة'}</div>
+                        </div>
+                    ` : ''}
+
+                    <div class="actions">
+                        <button class="btn" 
+                                onclick="handleBanAction('${u.id}', ${isCurrentlyBanned})"
+                                style="background: ${isCurrentlyBanned ? 'var(--success)' : 'var(--warning)'}; color: ${isCurrentlyBanned ? '#fff' : '#000'}">
+                            <i class="fas ${isCurrentlyBanned ? 'fa-unlock' : 'fa-user-slash'}"></i>
+                            ${isCurrentlyBanned ? 'فك الحظر الآن' : 'حظر 3 أيام'}
+                        </button>
+                        <button class="btn btn-delete" onclick="handleDelete('${u.id}')">
+                            <i class="fas fa-trash-alt"></i> مسح نهائي
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        window.handleBanAction = async (id, isBanned) => {
+            if (!isBanned) {
+                const reason = prompt("اكتب سبب الحظر:");
+                if (reason === null) return;
+
+                const expiry = new Date();
+                expiry.setDate(expiry.getDate() + 3);
+                
+                // تحديث جدول البروفايل
+                const { error } = await _sb.from('profiles').update({
+                    is_banned: true, 
+                    banned_until: expiry.toISOString(),
+                    ban_reason: reason
+                }).eq('id', id);
+
+                // إرسال الإشعار
+                await _sb.from('notifications').insert([{
+                    recipient_id: id,
+                    title: "تم حظر حسابك",
+                    message: `تم حظر حسابك لمدة 3 أيام بسبب: ${reason}`,
+                    type: 'ban'
+                }]);
+
+                if (!error) loadData();
+            } else {
+                if (!confirm("فك الحظر؟")) return;
+                await _sb.from('profiles').update({ is_banned: false, banned_until: null, ban_reason: null }).eq('id', id);
+                
+                await _sb.from('notifications').insert([{
+                    recipient_id: id,
+                    title: "تم فك الحظر",
+                    message: "يمكنك الآن استخدام حسابك بشكل طبيعي.",
+                    type: 'general'
+                }]);
+
+                loadData();
+            }
+        };
+
+        window.handleDelete = async (id) => {
+            if (!confirm("حذف الحساب وكل المحتوى نهائياً؟")) return;
+            await _sb.from('stories').delete().eq('author_id', id);
+            await _sb.from('profiles').delete().eq('id', id);
+            loadData();
+        };
+
+        window.onload = loadData;
+    </script>
+</body>
+</html>
+
