@@ -69,7 +69,15 @@
 
         async function init() {
             try {
-                const { data, error } = await supabaseClient.from('stories').select('*').order('created_at', { ascending: false });
+                // جلب بيانات الروايات وعمل ربط لجلب اسم المستخدم من جدول profiles
+                const { data, error } = await supabaseClient
+                    .from('stories')
+                    .select(`
+                        *,
+                        profiles:author_id ( username )
+                    `)
+                    .order('created_at', { ascending: false });
+
                 if (error) throw error;
                 allStories = data || [];
                 render(allStories);
@@ -83,10 +91,11 @@
 
         function handleSearch() {
             const term = document.getElementById('searchBox').value.toLowerCase();
-            const filtered = allStories.filter(s => 
-                (s.title && s.title.toLowerCase().includes(term)) || 
-                (s.author_name && s.author_name.toLowerCase().includes(term))
-            );
+            const filtered = allStories.filter(s => {
+                const authorName = s.profiles?.username || '';
+                return (s.title && s.title.toLowerCase().includes(term)) || 
+                       (authorName.toLowerCase().includes(term));
+            });
             render(filtered);
         }
 
@@ -105,7 +114,7 @@
             list.innerHTML = stories.map(s => `
                 <div class="novel-card">
                     <div class="novel-title">${s.title}</div>
-                    <div class="author-name"><i class="fas fa-pen-nib"></i> الكاتب: ${s.author_name || 'مجهول'}</div>
+                    <div class="author-name"><i class="fas fa-pen-nib"></i> الكاتب: ${s.profiles?.username || 'مجهول'}</div>
 
                     <div class="reason-container">
                         <div style="font-size: 11px; color: var(--warning); margin-bottom: 5px;">
@@ -116,7 +125,7 @@
                     </div>
 
                     <div class="actions">
-                        <button class="btn btn-delete" onclick="processDelete('${s.id}', '${s.title}', '${s.cover_url}', '${s.user_id}')">
+                        <button class="btn btn-delete" onclick="processDelete('${s.id}', '${s.title}', '${s.cover_url}', '${s.author_id}')">
                             <i class="fas fa-trash-alt"></i> حذف الرواية نهائياً
                         </button>
                     </div>
@@ -170,4 +179,3 @@
     </script>
 </body>
 </html>
-
